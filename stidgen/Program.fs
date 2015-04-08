@@ -14,6 +14,7 @@ let main argv =
             ValueProperty = "Value"
             Visibility = Public
         }
-    printf "%s" (gen idType)
-    System.Console.ReadLine()
+    printf "%s" (idTypeToString idType)
+
+    System.Console.ReadLine() |> ignore
     0 // return an integer exit code

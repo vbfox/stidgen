@@ -14,39 +14,42 @@ let private visibilityToKeyword = function
     | Private -> SyntaxKind.PrivateKeyword
     | Protected -> SyntaxKind.ProtectedKeyword
 
-let toCompilationUnit idType = 
-    let compilationUnit = SyntaxFactory.CompilationUnit().AddUsings("System")
- 
-    let generatedNamespace = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
-    
-    let visibility = visibilityToKeyword idType.Visibility
+let private makeValueProperty idType =
+    SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(idType.Type.FullName), idType.ValueProperty)
+        .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+        .AddAccessorListAccessors(
+            SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                .WithSemicolonToken(),
+            SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
+                .WithSemicolonToken()
+            )
 
+let private makeClass idType = 
+    let visibility = visibilityToKeyword idType.Visibility
     let generatedClass =
         SyntaxFactory.ClassDeclaration(idType.Name)
             .AddModifiers(SyntaxFactory.Token(visibility))
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PartialKeyword))
  
-    let valueProperty = 
-        SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(idType.Type.FullName), idType.ValueProperty)
-            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-            .AddAccessorListAccessors(
-                SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                    .WithSemicolonToken(),
-                SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
-                    .WithSemicolonToken()
-                )
-
     let generatedMethod =
         SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName("void"), "Test")
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.StaticKeyword))
             .WithBody(SyntaxFactory.Block())
  
-    let rootClass = generatedClass.AddMembers(generatedMethod, valueProperty)
-    let ns = generatedNamespace.AddMembers(rootClass)
+    generatedClass.AddMembers(
+        generatedMethod,
+        idType |> makeValueProperty)
 
-    compilationUnit.AddMembers(ns)
+let toCompilationUnit idType = 
+    let generatedNamespace =
+        SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
+            .AddMembers(makeClass idType)
+
+    SyntaxFactory.CompilationUnit()
+        .AddUsings("System")
+        .AddMembers(generatedNamespace)
 
 let compilationUnitToString compilationUnit =
     let stringBuilder = new StringBuilder()
@@ -57,7 +60,7 @@ let compilationUnitToString compilationUnit =
     
     writer.ToString()
 
-let gen idType =
+let idTypeToString idType =
     idType
         |> toCompilationUnit
         |> compilationUnitToString
