@@ -1,6 +1,7 @@
 ﻿module BlackFox.Stidgen.CsharpGeneration
 
 open BlackFox.Stidgen.Description
+open BlackFox.Stidgen.FluentRoslyn
 open Microsoft.CodeAnalysis
 open Microsoft.CodeAnalysis.CSharp
 open Microsoft.CodeAnalysis.CSharp.Syntax
@@ -14,9 +15,7 @@ let private visibilityToKeyword = function
     | Protected -> SyntaxKind.ProtectedKeyword
 
 let toCompilationUnit idType = 
-    let compilationUnit =
-        SyntaxFactory.CompilationUnit()
-            .AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName("System")))
+    let compilationUnit = SyntaxFactory.CompilationUnit().AddUsings("System")
  
     let generatedNamespace = SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
     
@@ -32,10 +31,10 @@ let toCompilationUnit idType =
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddAccessorListAccessors(
                 SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
+                    .WithSemicolonToken(),
                 SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                     .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
-                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                    .WithSemicolonToken()
                 )
 
     let generatedMethod =

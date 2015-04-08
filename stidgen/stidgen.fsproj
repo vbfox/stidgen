@@ -57,6 +57,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <None Include="App.config" />
     <Compile Include="Description.fs" />
+    <Compile Include="FluentRoslyn.fs" />
     <Compile Include="CsharpGeneration.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
