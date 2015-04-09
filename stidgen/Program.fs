@@ -13,6 +13,7 @@ let main argv =
             Type = typedefof<string>;
             ValueProperty = "Value"
             Visibility = Public
+            AllowNull = false
         }
     printf "%s" (idTypeToString idType)
 

@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.22609.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "stidgen", "stidgen\stidgen.fsproj", "{0A78F77F-6316-406D-9A1E-DA3DFE87443B}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "UnitTests", "UnitTests\UnitTests.fsproj", "{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{0A78F77F-6316-406D-9A1E-DA3DFE87443B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A78F77F-6316-406D-9A1E-DA3DFE87443B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A78F77F-6316-406D-9A1E-DA3DFE87443B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

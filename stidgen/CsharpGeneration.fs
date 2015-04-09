@@ -1,21 +1,31 @@
 ﻿module BlackFox.Stidgen.CsharpGeneration
 
+open System
+open System.IO
+open System.Text
 open BlackFox.Stidgen.Description
 open BlackFox.Stidgen.FluentRoslyn
 open Microsoft.CodeAnalysis
 open Microsoft.CodeAnalysis.CSharp
 open Microsoft.CodeAnalysis.CSharp.Syntax
 open Microsoft.CodeAnalysis.Formatting
-open System.IO
-open System.Text
+open Microsoft.CodeAnalysis.Simplification
+
+type private ParsedInfo =
+    {
+        TypeSyntax : TypeSyntax
+    }
+
+let private (|?>) x (c, f) = if c then f x else x
+let private (|??>) x (c, f, g) = if c then f x else g x
 
 let private visibilityToKeyword = function
     | Public -> SyntaxKind.PublicKeyword
     | Private -> SyntaxKind.PrivateKeyword
     | Protected -> SyntaxKind.ProtectedKeyword
 
-let private makeValueProperty idType =
-    SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(idType.Type.FullName), idType.ValueProperty)
+let private makeValueProperty info idType =
+    SyntaxFactory.PropertyDeclaration(info.TypeSyntax, idType.ValueProperty)
         .AddAccessorListAccessors(
             SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                 |> withSemicolon,
@@ -25,25 +35,87 @@ let private makeValueProperty idType =
             )
         |> addModifiers [|SyntaxKind.PublicKeyword|]
 
-let private makeClass idType = 
+let private firstCharToLower (x:string) = 
+    if x.Length = 0 then
+        x
+    else
+        let first = System.Char.ToLowerInvariant(x.[0])
+        first.ToString() + x.Substring(1)
+
+let private typenameof<'t> = SyntaxFactory.ParseTypeName(typedefof<'t>.FullName)
+
+let private makeCtor info idType =
+    let argName = firstCharToLower idType.ValueProperty
+
+    let checkForNull = 
+        SyntaxFactory.IfStatement(
+            SyntaxFactory.BinaryExpression(
+                SyntaxKind.EqualsExpression,
+                SyntaxFactory.IdentifierName(argName),
+                SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
+            ),
+            SyntaxFactory.Block(
+                SyntaxFactory.ThrowStatement(
+                    SyntaxFactory.ObjectCreationExpression(typenameof<ArgumentNullException>)
+                    |> addArgument (stringLiteral argName)
+                )
+            )
+        )
+
+    let assignProperty =
+        setThisMember idType.ValueProperty (SyntaxFactory.IdentifierName(argName))
+
+    SyntaxFactory.ConstructorDeclaration(idType.Name)
+    |> addModifiers [|SyntaxKind.PublicKeyword|]
+    |> addParameter argName info.TypeSyntax
+    |?> (not idType.AllowNull, addBodyStatement checkForNull)
+    |> addBodyStatement assignProperty
+
+let private makeToString info idType =
+    let returnToString =
+        SyntaxFactory.ReturnStatement(
+            SyntaxFactory.InvocationExpression(
+                thisMemberAccess idType.ValueProperty |> memberAccess "ToString"
+            )
+        )
+
+    let returnIfNull =
+        SyntaxFactory.IfStatement(
+            SyntaxFactory.BinaryExpression(
+                SyntaxKind.EqualsExpression,
+                thisMemberAccess idType.ValueProperty,
+                nullLiteral),
+            SyntaxFactory.Block()
+                |> addStatement (SyntaxFactory.ReturnStatement(stringLiteral ""))
+        )
+
+    SyntaxFactory.MethodDeclaration(stringTypeSyntax, "ToString")
+    |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
+    |?> (idType.AllowNull, addBodyStatement returnIfNull)
+    |> addBodyStatement returnToString
+
+let private makeClass idType info = 
     let visibility = visibilityToKeyword idType.Visibility
     let generatedClass =
         SyntaxFactory.ClassDeclaration(idType.Name)
-            |> addModifiers [|SyntaxKind.PartialKeyword; visibility|]
- 
-    let generatedMethod =
-        SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName("void"), "Test")
-            .WithBody(SyntaxFactory.Block())
-            |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword|]
+            |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
  
     generatedClass.AddMembers(
-        generatedMethod,
-        idType |> makeValueProperty)
+        idType |> makeValueProperty info,
+        idType |> makeCtor info,
+        idType |> makeToString info
+    )
 
 let toCompilationUnit idType = 
+    let info =
+        {
+            TypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
+        }
+
     let generatedNamespace =
         SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
-            .AddMembers(makeClass idType)
+            .AddMembers(makeClass idType info)
+            .WithAdditionalAnnotations(Simplifier.Annotation)
 
     SyntaxFactory.CompilationUnit()
         .AddUsings("System")

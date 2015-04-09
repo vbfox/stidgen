@@ -14,4 +14,5 @@ type IdType =
         Type : Type
         ValueProperty : string
         Visibility : Visibility
+        AllowNull : bool
     }
