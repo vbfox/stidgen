@@ -197,3 +197,4 @@ FakesAssemblies/
 
 # Paket package manager
 /.paket/paket.exe
+*.ncrunchsolution
