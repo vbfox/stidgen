@@ -16,27 +16,25 @@ let private visibilityToKeyword = function
 
 let private makeValueProperty idType =
     SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(idType.Type.FullName), idType.ValueProperty)
-        .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
         .AddAccessorListAccessors(
             SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                .WithSemicolonToken(),
+                |> withSemicolon,
             SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
-                .WithSemicolonToken()
+                |> addModifiers [|SyntaxKind.PrivateKeyword|]
+                |> withSemicolon
             )
+        |> addModifiers [|SyntaxKind.PublicKeyword|]
 
 let private makeClass idType = 
     let visibility = visibilityToKeyword idType.Visibility
     let generatedClass =
         SyntaxFactory.ClassDeclaration(idType.Name)
-            .AddModifiers(SyntaxFactory.Token(visibility))
-            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PartialKeyword))
+            |> addModifiers [|SyntaxKind.PartialKeyword; visibility|]
  
     let generatedMethod =
         SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName("void"), "Test")
-            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
-            .AddModifiers(SyntaxFactory.Token(SyntaxKind.StaticKeyword))
             .WithBody(SyntaxFactory.Block())
+            |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword|]
  
     generatedClass.AddMembers(
         generatedMethod,
