@@ -23,21 +23,21 @@ namespace BlackFox.Tests
 {
     public partial class Id
     {
-        public System.String Value { get; private set; }
+        public string Value { get; private set; }
 
-        public Id(System.String value)
+        public Id(string value)
         {
             if (value == null)
             {
-                throw new System.ArgumentNullException("value");
+                throw new ArgumentNullException("value");
             }
 
-            this.Value = value;
+            Value = value;
         }
 
         public override string ToString()
         {
-            return this.Value.ToString();
+            return Value.ToString();
         }
     }
 }"""
@@ -61,21 +61,21 @@ namespace BlackFox.Tests
 {
     public partial class Id
     {
-        public System.String Value { get; private set; }
+        public string Value { get; private set; }
 
-        public Id(System.String value)
+        public Id(string value)
         {
-            this.Value = value;
+            Value = value;
         }
 
         public override string ToString()
         {
-            if (this.Value == null)
+            if (Value == null)
             {
                 return "";
             }
 
-            return this.Value.ToString();
+            return Value.ToString();
         }
     }
 }"""
@@ -97,21 +97,21 @@ let ``no namespace`` () =
 
 public partial class Id
 {
-    public System.String Value { get; private set; }
+    public string Value { get; private set; }
 
-    public Id(System.String value)
+    public Id(string value)
     {
         if (value == null)
         {
-            throw new System.ArgumentNullException("value");
+            throw new ArgumentNullException("value");
         }
 
-        this.Value = value;
+        Value = value;
     }
 
     public override string ToString()
     {
-        return this.Value.ToString();
+        return Value.ToString();
     }
 }"""
     Check.That(generated).IsEqualTo<string>(expected) |> ignore
@@ -130,29 +130,29 @@ let ``casts`` () =
 
 public partial class Id
 {
-    public System.String Value { get; private set; }
+    public string Value { get; private set; }
 
-    public Id(System.String value)
+    public Id(string value)
     {
         if (value == null)
         {
-            throw new System.ArgumentNullException("value");
+            throw new ArgumentNullException("value");
         }
 
-        this.Value = value;
+        Value = value;
     }
 
     public override string ToString()
     {
-        return this.Value.ToString();
+        return Value.ToString();
     }
 
-    public static implicit operator Id(System.String x)
+    public static implicit operator Id(string x)
     {
         return new Id(x);
     }
 
-    public static explicit operator System.String(Id x)
+    public static explicit operator string (Id x)
     {
         return x.Value;
     }

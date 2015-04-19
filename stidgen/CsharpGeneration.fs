@@ -124,7 +124,7 @@ let private makeClass idType info =
         |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax idType.CastToUnderlying
             (fun n -> simpleMemberAccess n idType.ValueProperty)
 
-let toCompilationUnit idType = 
+let makeRootNode idType = 
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
     let generatedFullName = if namespaceProvided then idType.Namespace + "." + idType.Name else idType.Name
     let info =
@@ -143,22 +143,53 @@ let toCompilationUnit idType =
             SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
                 .AddMembers(generatedClass) :> MemberDeclarationSyntax
 
-    let rootMember = rootMember.WithAdditionalAnnotations(Simplifier.Annotation)
-
     SyntaxFactory.CompilationUnit()
         .AddUsings("System")
         .AddMembers(rootMember)
 
-let compilationUnitToString compilationUnit =
-    let stringBuilder = new StringBuilder()
+let private makeDocument (rootNode:SyntaxNode) =
     let workspace = new AdhocWorkspace()
-    let formatted = Formatter.Format(compilationUnit, workspace)
-    use writer = new StringWriter(stringBuilder)
-    formatted.WriteTo(writer)
-    
-    writer.ToString()
+    let project = workspace.AddProject("MyProject", LanguageNames.CSharp)
+
+    let mscorlib = PortableExecutableReference.CreateFromAssembly(typedefof<obj>.Assembly)
+    let project = project.AddMetadataReference(mscorlib)
+    workspace.TryApplyChanges(project.Solution) |> ignore
+
+    project.AddDocument("GeneratedId.cs", rootNode)
+
+let private simplifyDocumentAsync (doc:Document) = 
+    async {
+        let! root = doc.GetSyntaxRootAsync() |> Async.AwaitTask
+        let newRoot = root.WithAdditionalAnnotations(Simplifier.Annotation)
+        let newDoc = doc.WithSyntaxRoot(newRoot)
+
+        return! Simplifier.ReduceAsync(newDoc) |> Async.AwaitTask
+    }
+
+let private formatDocumentAsync (doc:Document) =
+    async {
+        let! root = doc.GetSyntaxRootAsync() |> Async.AwaitTask
+        let newRoot = root.WithAdditionalAnnotations(Formatter.Annotation)
+        let newDoc = doc.WithSyntaxRoot(newRoot)
+
+        return! Formatter.FormatAsync(newDoc) |> Async.AwaitTask
+    }
+
+let private (|!>) a f = async.Bind(a, f)
+
+let private rootNodeToStringAsync node =
+    async {
+        let document = makeDocument node
+        let! formatted = document |> simplifyDocumentAsync |!> formatDocumentAsync
+        let! finalNode = formatted.GetSyntaxRootAsync() |> Async.AwaitTask
+
+        return finalNode.GetText().ToString()
+    }
+
+let idTypeToStringAsync idType =
+    idType
+        |> makeRootNode
+        |> rootNodeToStringAsync
 
 let idTypeToString idType =
-    idType
-        |> toCompilationUnit
-        |> compilationUnitToString
+    idType |> idTypeToStringAsync |> Async.RunSynchronously
