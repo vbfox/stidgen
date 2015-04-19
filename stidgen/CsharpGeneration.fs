@@ -157,31 +157,35 @@ let private makeDocument (rootNode:SyntaxNode) =
 
     project.AddDocument("GeneratedId.cs", rootNode)
 
+/// A version of the pipe operators for async workflows
+let private (|!>) a f = async.Bind(a, f)
+
+/// Unary operator to convert C# Task<'t> to F# Async<'t>
+let private (!!) t = Async.AwaitTask t
+
 let private simplifyDocumentAsync (doc:Document) = 
     async {
-        let! root = doc.GetSyntaxRootAsync() |> Async.AwaitTask
+        let! root = !! doc.GetSyntaxRootAsync()
         let newRoot = root.WithAdditionalAnnotations(Simplifier.Annotation)
         let newDoc = doc.WithSyntaxRoot(newRoot)
 
-        return! Simplifier.ReduceAsync(newDoc) |> Async.AwaitTask
+        return! !! Simplifier.ReduceAsync(newDoc)
     }
 
 let private formatDocumentAsync (doc:Document) =
     async {
-        let! root = doc.GetSyntaxRootAsync() |> Async.AwaitTask
+        let! root = !! doc.GetSyntaxRootAsync()
         let newRoot = root.WithAdditionalAnnotations(Formatter.Annotation)
         let newDoc = doc.WithSyntaxRoot(newRoot)
 
-        return! Formatter.FormatAsync(newDoc) |> Async.AwaitTask
+        return! !! Formatter.FormatAsync(newDoc)
     }
-
-let private (|!>) a f = async.Bind(a, f)
 
 let private rootNodeToStringAsync node =
     async {
         let document = makeDocument node
         let! formatted = document |> simplifyDocumentAsync |!> formatDocumentAsync
-        let! finalNode = formatted.GetSyntaxRootAsync() |> Async.AwaitTask
+        let! finalNode = !! formatted.GetSyntaxRootAsync()
 
         return finalNode.GetText().ToString()
     }
