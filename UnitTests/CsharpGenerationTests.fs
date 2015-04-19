@@ -147,12 +147,12 @@ public partial class Id
         return this.Value.ToString();
     }
 
-    public static implicit operator global::Id(System.String x)
+    public static implicit operator Id(System.String x)
     {
-        return new global::Id(x);
+        return new Id(x);
     }
 
-    public static explicit operator System.String(global::Id x)
+    public static explicit operator System.String(Id x)
     {
         return x.Value;
     }

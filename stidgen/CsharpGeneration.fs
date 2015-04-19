@@ -126,7 +126,7 @@ let private makeClass idType info =
 
 let toCompilationUnit idType = 
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
-    let generatedFullName = "global::" + (if namespaceProvided then idType.Namespace + "." + idType.Name else idType.Name)
+    let generatedFullName = if namespaceProvided then idType.Namespace + "." + idType.Name else idType.Name
     let info =
         {
             NamespaceProvided = namespaceProvided
