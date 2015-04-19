@@ -6,15 +6,10 @@ open BlackFox.Stidgen.CsharpGeneration
 [<EntryPoint>]
 let main argv = 
     // public BlackFox.Tests.TestId : string { Value }
-    let idType : IdType =
-        {
-            Name = "TestId";
-            Namespace = "BlackFox.Tests"
-            Type = typedefof<string>;
-            ValueProperty = "Value"
-            Visibility = Public
-            AllowNull = false
-        }
+    let idType = makeIdType<string> (fun i ->
+            { i with Name = "TestId" }
+        )
+
     printf "%s" (idTypeToString idType)
 
     System.Console.ReadLine() |> ignore

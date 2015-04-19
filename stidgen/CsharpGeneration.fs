@@ -112,14 +112,20 @@ let toCompilationUnit idType =
             TypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
         }
 
-    let generatedNamespace =
-        SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
-            .AddMembers(makeClass idType info)
-            .WithAdditionalAnnotations(Simplifier.Annotation)
+    let generatedClass = makeClass idType info
+
+    let rootMember =
+        if String.IsNullOrEmpty(idType.Namespace) then
+            generatedClass :> MemberDeclarationSyntax
+        else
+            SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
+                .AddMembers(generatedClass) :> MemberDeclarationSyntax
+
+    let rootMember = rootMember.WithAdditionalAnnotations(Simplifier.Annotation)
 
     SyntaxFactory.CompilationUnit()
         .AddUsings("System")
-        .AddMembers(generatedNamespace)
+        .AddMembers(rootMember)
 
 let compilationUnitToString compilationUnit =
     let stringBuilder = new StringBuilder()
