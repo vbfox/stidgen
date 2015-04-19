@@ -4,6 +4,13 @@ open Microsoft.CodeAnalysis
 open Microsoft.CodeAnalysis.CSharp
 open Microsoft.CodeAnalysis.CSharp.Syntax
 
+module Operators =
+    /// A version of the pipe operators for async workflows
+    let (|!>) a f = async.Bind(a, f)
+
+    /// Unary operator to convert C# Task<'t> to F# Async<'t>
+    let (!!) t = Async.AwaitTask t
+
 type CompilationUnitSyntax with
     member this.AddUsings([<System.ParamArrayAttribute>] items : string array) =
         let directives =

@@ -5,6 +5,7 @@ open System.IO
 open System.Text
 open BlackFox.Stidgen.Description
 open BlackFox.Stidgen.FluentRoslyn
+open BlackFox.Stidgen.FluentRoslyn.Operators
 open Microsoft.CodeAnalysis
 open Microsoft.CodeAnalysis.CSharp
 open Microsoft.CodeAnalysis.CSharp.Syntax
@@ -156,12 +157,6 @@ let private makeDocument (rootNode:SyntaxNode) =
     workspace.TryApplyChanges(project.Solution) |> ignore
 
     project.AddDocument("GeneratedId.cs", rootNode)
-
-/// A version of the pipe operators for async workflows
-let private (|!>) a f = async.Bind(a, f)
-
-/// Unary operator to convert C# Task<'t> to F# Async<'t>
-let private (!!) t = Async.AwaitTask t
 
 let private simplifyDocumentAsync (doc:Document) = 
     async {
