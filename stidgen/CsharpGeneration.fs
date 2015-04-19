@@ -13,7 +13,9 @@ open Microsoft.CodeAnalysis.Simplification
 
 type private ParsedInfo =
     {
-        TypeSyntax : TypeSyntax
+        NamespaceProvided : bool
+        UnderlyingTypeSyntax : TypeSyntax
+        GeneratedTypeSyntax : TypeSyntax
     }
 
 let private (|?>) x (c, f) = if c then f x else x
@@ -25,7 +27,7 @@ let private visibilityToKeyword = function
     | Protected -> SyntaxKind.ProtectedKeyword
 
 let private makeValueProperty info idType =
-    SyntaxFactory.PropertyDeclaration(info.TypeSyntax, idType.ValueProperty)
+    SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, idType.ValueProperty)
         .AddAccessorListAccessors(
             SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                 |> withSemicolon,
@@ -67,7 +69,7 @@ let private makeCtor info idType =
 
     SyntaxFactory.ConstructorDeclaration(idType.Name)
     |> addModifiers [|SyntaxKind.PublicKeyword|]
-    |> addParameter argName info.TypeSyntax
+    |> addParameter argName info.UnderlyingTypeSyntax
     |?> (not idType.AllowNull, addBodyStatement checkForNull)
     |> addBodyStatement assignProperty
 
@@ -94,22 +96,42 @@ let private makeToString info idType =
     |?> (idType.AllowNull, addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
 
+let private addCast fromType toType cast expressionMaker generatedClass =
+    let paramName = "x"
+    let makeCast cast' = 
+        SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(cast'), toType)
+            |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
+            |> addParameter paramName fromType
+            |> addBodyStatement (SyntaxFactory.ReturnStatement(expressionMaker paramName)) 
+
+    let addCast' cast' = generatedClass |> addMember (makeCast cast')
+
+    match cast with
+    | None -> generatedClass
+    | Implicit -> addCast' SyntaxKind.ImplicitKeyword
+    | Explicit -> addCast' SyntaxKind.ExplicitKeyword
+
 let private makeClass idType info = 
     let visibility = visibilityToKeyword idType.Visibility
-    let generatedClass =
-        SyntaxFactory.ClassDeclaration(idType.Name)
-            |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
- 
-    generatedClass.AddMembers(
-        idType |> makeValueProperty info,
-        idType |> makeCtor info,
-        idType |> makeToString info
-    )
+
+    SyntaxFactory.ClassDeclaration(idType.Name)
+        |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
+        |> addMember (idType |> makeValueProperty info)
+        |> addMember (idType |> makeCtor info)
+        |> addMember (idType |> makeToString info)
+        |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax idType.CastFromUnderlying
+            (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
+        |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax idType.CastToUnderlying
+            (fun n -> simpleMemberAccess n idType.ValueProperty)
 
 let toCompilationUnit idType = 
+    let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
+    let generatedFullName = "global::" + (if namespaceProvided then idType.Namespace + "." + idType.Name else idType.Name)
     let info =
         {
-            TypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
+            NamespaceProvided = namespaceProvided
+            UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
+            GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(generatedFullName)
         }
 
     let generatedClass = makeClass idType info

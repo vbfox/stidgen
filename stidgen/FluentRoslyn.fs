@@ -33,6 +33,9 @@ let inline addArgument expression (input:^T) =
 let inline addBodyStatement statement (input:^T) =
     (^T : (member AddBodyStatements : StatementSyntax array -> ^T) (input, [|statement|]))
     
+let inline addMember member' (input:^T) =
+    (^T : (member AddMembers : MemberDeclarationSyntax array -> ^T) (input, [|member'|]))
+
 let inline addStatement statement (input:^T) =
     (^T : (member AddStatements : StatementSyntax array -> ^T) (input, [|statement|]))
 
@@ -72,3 +75,8 @@ let simpleMemberAccess (identifier:string) (``member``:string) =
 let thisMemberAccess (``member``:string) =
     SyntaxFactory.ThisExpression()
     |> memberAccess ``member``
+
+let objectCreation createdType argumentExpressions =
+    let args = argumentExpressions |> Array.map (fun a -> SyntaxFactory.Argument(a))
+    let argList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList<ArgumentSyntax>(args))
+    SyntaxFactory.ObjectCreationExpression(createdType).WithArgumentList(argList)

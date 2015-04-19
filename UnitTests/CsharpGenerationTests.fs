@@ -6,49 +6,13 @@ open NFluent
 open NUnit.Framework
 
 [<Test>]
-let ``string allow null`` () =
+let ``string`` () =
     let idType = makeIdType<string> (fun i ->
             { i with
-                Name = "TestId"
-                Namespace = "BlackFox.Tests"
-                AllowNull = true
-            }
-        )
-
-    let generated = idType |> idTypeToString
-    let expected = """using System;
-
-namespace BlackFox.Tests
-{
-    public partial class TestId
-    {
-        public System.String Value { get; private set; }
-
-        public TestId(System.String value)
-        {
-            this.Value = value;
-        }
-
-        public override string ToString()
-        {
-            if (this.Value == null)
-            {
-                return "";
-            }
-
-            return this.Value.ToString();
-        }
-    }
-}"""
-    Check.That(generated).IsEqualTo<string>(expected) |> ignore
-
-[<Test>]
-let ``string not allow null`` () =
-    let idType = makeIdType<string> (fun i ->
-            { i with
-                Name = "TestId"
                 Namespace = "BlackFox.Tests"
                 AllowNull = false
+                CastFromUnderlying = None
+                CastToUnderlying = None
             }
         )
 
@@ -57,11 +21,11 @@ let ``string not allow null`` () =
 
 namespace BlackFox.Tests
 {
-    public partial class TestId
+    public partial class Id
     {
         public System.String Value { get; private set; }
 
-        public TestId(System.String value)
+        public Id(System.String value)
         {
             if (value == null)
             {
@@ -80,23 +44,62 @@ namespace BlackFox.Tests
     Check.That(generated).IsEqualTo<string>(expected) |> ignore
 
 [<Test>]
-let ``no namespace`` () =
+let ``string allow null`` () =
     let idType = makeIdType<string> (fun i ->
             { i with
-                Name = "TestId"
-                Namespace = ""
-                AllowNull = false
+                Namespace = "BlackFox.Tests"
+                AllowNull = true
+                CastFromUnderlying = None
+                CastToUnderlying = None
             }
         )
 
     let generated = idType |> idTypeToString
     let expected = """using System;
 
-public partial class TestId
+namespace BlackFox.Tests
+{
+    public partial class Id
+    {
+        public System.String Value { get; private set; }
+
+        public Id(System.String value)
+        {
+            this.Value = value;
+        }
+
+        public override string ToString()
+        {
+            if (this.Value == null)
+            {
+                return "";
+            }
+
+            return this.Value.ToString();
+        }
+    }
+}"""
+    Check.That(generated).IsEqualTo<string>(expected) |> ignore
+
+[<Test>]
+let ``no namespace`` () =
+    let idType = makeIdType<string> (fun i ->
+            { i with
+                Namespace = ""
+                AllowNull = false
+                CastFromUnderlying = None
+                CastToUnderlying = None
+            }
+        )
+
+    let generated = idType |> idTypeToString
+    let expected = """using System;
+
+public partial class Id
 {
     public System.String Value { get; private set; }
 
-    public TestId(System.String value)
+    public Id(System.String value)
     {
         if (value == null)
         {
@@ -109,6 +112,49 @@ public partial class TestId
     public override string ToString()
     {
         return this.Value.ToString();
+    }
+}"""
+    Check.That(generated).IsEqualTo<string>(expected) |> ignore
+
+[<Test>]
+let ``casts`` () =
+    let idType = makeIdType<string> (fun i ->
+            { i with
+                CastFromUnderlying = Implicit
+                CastToUnderlying = Explicit
+            }
+        )
+
+    let generated = idType |> idTypeToString
+    let expected = """using System;
+
+public partial class Id
+{
+    public System.String Value { get; private set; }
+
+    public Id(System.String value)
+    {
+        if (value == null)
+        {
+            throw new System.ArgumentNullException("value");
+        }
+
+        this.Value = value;
+    }
+
+    public override string ToString()
+    {
+        return this.Value.ToString();
+    }
+
+    public static implicit operator global::Id(System.String x)
+    {
+        return new global::Id(x);
+    }
+
+    public static explicit operator System.String(global::Id x)
+    {
+        return x.Value;
     }
 }"""
     Check.That(generated).IsEqualTo<string>(expected) |> ignore

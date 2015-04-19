@@ -7,7 +7,10 @@ open BlackFox.Stidgen.CsharpGeneration
 let main argv = 
     // public BlackFox.Tests.TestId : string { Value }
     let idType = makeIdType<string> (fun i ->
-            { i with Name = "TestId" }
+            { i with
+                Name = "TestId"
+                Namespace = "BlackFox.TestIdGeneration"
+            }
         )
 
     printf "%s" (idTypeToString idType)
