@@ -39,6 +39,11 @@ namespace BlackFox.Tests
         {
             return Value.ToString();
         }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
     }
 }"""
     Check.That(generated).IsEqualTo<string>(expected) |> ignore
@@ -77,6 +82,16 @@ namespace BlackFox.Tests
 
             return Value.ToString();
         }
+
+        public override int GetHashCode()
+        {
+            if (Value == null)
+            {
+                return 0;
+            }
+
+            return Value.GetHashCode();
+        }
     }
 }"""
     Check.That(generated).IsEqualTo<string>(expected) |> ignore
@@ -113,6 +128,11 @@ public partial class Id
     {
         return Value.ToString();
     }
+
+    public override int GetHashCode()
+    {
+        return Value.GetHashCode();
+    }
 }"""
     Check.That(generated).IsEqualTo<string>(expected) |> ignore
 
@@ -145,6 +165,11 @@ public partial class Id
     public override string ToString()
     {
         return Value.ToString();
+    }
+
+    public override int GetHashCode()
+    {
+        return Value.GetHashCode();
     }
 
     public static implicit operator Id(string x)

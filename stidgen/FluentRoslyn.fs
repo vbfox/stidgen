@@ -20,6 +20,7 @@ type CompilationUnitSyntax with
         this.AddUsings(directives)
 
 let stringTypeSyntax = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))
+let intTypeSyntax = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
 
 let inline addModifiers syntaxKinds (input:^T) =
     let tokens = syntaxKinds |> Array.map (fun k -> SyntaxFactory.Token(k))
@@ -54,6 +55,9 @@ let nullLiteral = SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpressi
 
 let stringLiteral (s:string) =
     SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(s))
+
+let intLiteral (i:int) =
+    SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(i))
 
 let setThisMember (memberName:string) value =
     SyntaxFactory.ExpressionStatement(

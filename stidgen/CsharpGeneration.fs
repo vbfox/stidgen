@@ -74,28 +74,45 @@ let private makeCtor info idType =
     |?> (not idType.AllowNull, addBodyStatement checkForNull)
     |> addBodyStatement assignProperty
 
-let private makeToString info idType =
-    let returnToString =
-        SyntaxFactory.ReturnStatement(
-            SyntaxFactory.InvocationExpression(
-                thisMemberAccess idType.ValueProperty |> memberAccess "ToString"
-            )
+let private callVoidMethodOnValue name idType =
+    SyntaxFactory.ReturnStatement(
+        SyntaxFactory.InvocationExpression(
+            thisMemberAccess idType.ValueProperty |> memberAccess name
         )
+    )
 
-    let returnIfNull =
+let private makeIfValueNull fillBlock idType =
         SyntaxFactory.IfStatement(
             SyntaxFactory.BinaryExpression(
                 SyntaxKind.EqualsExpression,
                 thisMemberAccess idType.ValueProperty,
                 nullLiteral),
-            SyntaxFactory.Block()
-                |> addStatement (SyntaxFactory.ReturnStatement(stringLiteral ""))
+            fillBlock(SyntaxFactory.Block())
+        )
+
+let private makeToString info idType =
+    let returnToString = idType |> callVoidMethodOnValue "ToString"
+
+    let returnIfNull = idType |> makeIfValueNull (fun block ->
+        block |> addStatement (SyntaxFactory.ReturnStatement(stringLiteral ""))
         )
 
     SyntaxFactory.MethodDeclaration(stringTypeSyntax, "ToString")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
     |?> (idType.AllowNull, addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
+
+let private makeGetHashCode info idType =
+    let returnGetHashCode = idType |> callVoidMethodOnValue "GetHashCode"
+
+    let returnIfNull = idType |> makeIfValueNull (fun block ->
+        block |> addStatement (SyntaxFactory.ReturnStatement(intLiteral 0))
+        )
+
+    SyntaxFactory.MethodDeclaration(intTypeSyntax, "GetHashCode")
+    |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
+    |?> (idType.AllowNull, addBodyStatement returnIfNull)
+    |> addBodyStatement returnGetHashCode
 
 let private addCast fromType toType cast expressionMaker generatedClass =
     let paramName = "x"
@@ -115,11 +132,15 @@ let private addCast fromType toType cast expressionMaker generatedClass =
 let private makeClass idType info = 
     let visibility = visibilityToKeyword idType.Visibility
 
+    let addMember' builder (decl : ClassDeclarationSyntax) =
+        decl |> addMember (idType |> builder info)
+
     SyntaxFactory.ClassDeclaration(idType.Name)
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
-        |> addMember (idType |> makeValueProperty info)
-        |> addMember (idType |> makeCtor info)
-        |> addMember (idType |> makeToString info)
+        |> addMember' makeValueProperty
+        |> addMember' makeCtor
+        |> addMember' makeToString
+        |> addMember' makeGetHashCode
         |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax idType.CastFromUnderlying
             (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
         |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax idType.CastToUnderlying
