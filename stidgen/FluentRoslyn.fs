@@ -19,8 +19,23 @@ type CompilationUnitSyntax with
 
         this.AddUsings(directives)
 
-let stringTypeSyntax = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))
-let intTypeSyntax = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
+type TypeSyntax with
+    static member Object = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ObjectKeyword))
+    static member String = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))
+    static member Int = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
+    static member Bool = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.BoolKeyword))
+
+module Literal = 
+    let Null = SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
+    let True = SyntaxFactory.LiteralExpression(SyntaxKind.TrueLiteralExpression)
+    let False = SyntaxFactory.LiteralExpression(SyntaxKind.FalseLiteralExpression)
+    let Bool (b:bool) = if b then True else False
+
+    let String (s:string) =
+        SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(s))
+
+    let Int (i:int) =
+        SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(i))
 
 let inline addModifiers syntaxKinds (input:^T) =
     let tokens = syntaxKinds |> Array.map (fun k -> SyntaxFactory.Token(k))
@@ -51,14 +66,6 @@ let inline withBody (statements: StatementSyntax array) (input:^T) =
     let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
     (^T : (member WithBody : BlockSyntax -> ^T) (input, block))
 
-let nullLiteral = SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
-
-let stringLiteral (s:string) =
-    SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(s))
-
-let intLiteral (i:int) =
-    SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(i))
-
 let setThisMember (memberName:string) value =
     SyntaxFactory.ExpressionStatement(
         SyntaxFactory.AssignmentExpression(
@@ -72,22 +79,53 @@ let setThisMember (memberName:string) value =
         )
     )
 
-let memberAccess (``member``:string) (expression:ExpressionSyntax) =
+let identifier (identifierName : string) = SyntaxFactory.IdentifierName(identifierName)
+
+let memberAccess (name : string) (onExpr : ExpressionSyntax) =
     SyntaxFactory.MemberAccessExpression(
         SyntaxKind.SimpleMemberAccessExpression,
-        expression,
-        SyntaxFactory.IdentifierName(``member``)
+        onExpr,
+        (identifier name)
     )
 
-let simpleMemberAccess (identifier:string) (``member``:string) =
-    SyntaxFactory.IdentifierName(identifier)
-    |> memberAccess ``member``
+let dottedMemberAccess (identifiers:string list) (expr: ExpressionSyntax) =
+    let rec memberAccessRec (remaining:string list) = 
+        match remaining with
+        | [] -> expr
+        | one :: rest -> memberAccessRec rest |> memberAccess one :> ExpressionSyntax
+
+    memberAccessRec (List.rev identifiers)
+
+let dottedMemberAccess' identifiers =
+    match identifiers with
+    | [] -> failwith "No identifiers provided"
+    | first::rest -> dottedMemberAccess rest (identifier first)
+
+let staticMemberAccess (``member``:string) (``type`` : TypeSyntax) =
+    ``type``
+
+let simpleMemberAccess (id:string) (``member``:string) =
+    (identifier id) |> memberAccess  ``member``
 
 let thisMemberAccess (``member``:string) =
-    SyntaxFactory.ThisExpression()
-    |> memberAccess ``member``
+    SyntaxFactory.ThisExpression() |> memberAccess ``member``
 
 let objectCreation createdType argumentExpressions =
     let args = argumentExpressions |> Array.map (fun a -> SyntaxFactory.Argument(a))
     let argList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList<ArgumentSyntax>(args))
-    SyntaxFactory.ObjectCreationExpression(createdType).WithArgumentList(argList)
+
+    SyntaxFactory.ObjectCreationExpression(createdType)
+        .WithArgumentList(argList)
+
+let invocation (expression : ExpressionSyntax) (argumentExpressions : ExpressionSyntax array) =
+    let args = argumentExpressions |> Array.map (fun a -> SyntaxFactory.Argument(a))
+    let argList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList<ArgumentSyntax>(args))
+
+    SyntaxFactory.InvocationExpression(expression)
+        .WithArgumentList(argList)
+
+let ret expression = SyntaxFactory.ReturnStatement(expression)
+let parenthesis expression = SyntaxFactory.ParenthesizedExpression(expression)
+let cast toType expression = parenthesis (SyntaxFactory.CastExpression(toType, expression))
+let is checkedType expression = parenthesis(SyntaxFactory.BinaryExpression(SyntaxKind.IsExpression, expression, checkedType))
+let not' expression = SyntaxFactory.PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, parenthesis expression)
