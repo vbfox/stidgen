@@ -167,6 +167,24 @@ module private Equality =
     let iequatableOf t =
         SyntaxFactory.QualifiedName(iEquatableNamespace, NameSyntax.MakeGeneric iEquatable.Name [|t|])
 
+    let makeOperator isNot leftArgType rightArgType =
+        let operatorToken = if isNot then SyntaxKind.ExclamationEqualsToken else SyntaxKind.EqualsEqualsToken
+
+        let equalsCall = invocation (thisMemberAccess "Equals") [| identifier "left"; identifier "right" |]
+        let equalsCall = if isNot then not' equalsCall :> ExpressionSyntax else equalsCall :> ExpressionSyntax
+        let body = ret equalsCall
+
+        SyntaxFactory.OperatorDeclaration(TypeSyntax.Bool, SyntaxFactory.Token(operatorToken))
+        |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
+        |> addParameter "left" leftArgType
+        |> addParameter "right" rightArgType
+        |> addBodyStatement body
+
+    let addOperators info (classDeclaration:ClassDeclarationSyntax) =
+        classDeclaration
+        |> addMember (makeOperator true info.GeneratedTypeSyntax info.GeneratedTypeSyntax)
+        |> addMember (makeOperator false info.GeneratedTypeSyntax info.GeneratedTypeSyntax)
+
 module private Casts =
     let addCast fromType toType cast expressionMaker generatedClass =
         let parameterName = "x"
@@ -174,7 +192,7 @@ module private Casts =
             SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(cast'), toType)
                 |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
                 |> addParameter parameterName fromType
-                |> addBodyStatement (SyntaxFactory.ReturnStatement(expressionMaker parameterName)) 
+                |> addBodyStatement (ret (expressionMaker parameterName)) 
 
         let addCast' cast' = generatedClass |> addMember (makeCast cast')
 
@@ -247,6 +265,7 @@ let private makeClass idType info =
         |> addMember' Equality.makeGetHashCode
         |> addMember' Equality.makeEquals
         |> addMember' Equality.makeEqualsGenerated
+        |> Equality.addOperators info
         |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
         |> Casts.addCastFromUnderlyingType info
         |> Casts.addCastToUnderlyingType info
