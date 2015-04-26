@@ -6,6 +6,7 @@ open System.Text
 open BlackFox.Stidgen.Description
 open BlackFox.Stidgen.FluentRoslyn
 open BlackFox.Stidgen.FluentRoslyn.Operators
+open BlackFox.Stidgen.FluentRoslyn.WellKnownMethods
 open Microsoft.CodeAnalysis
 open Microsoft.CodeAnalysis.CSharp
 open Microsoft.CodeAnalysis.CSharp.Syntax
@@ -14,9 +15,12 @@ open Microsoft.CodeAnalysis.Simplification
 
 type private ParsedInfo =
     {
+        IdType : IdType
+        AllowNull : bool
         NamespaceProvided : bool
         UnderlyingTypeSyntax : TypeSyntax
         GeneratedTypeSyntax : TypeSyntax
+        ValueMemberAccess : MemberAccessExpressionSyntax
     }
 
 let private (|?>) x (c, f) = if c then f x else x
@@ -59,18 +63,18 @@ let private makeCtor info idType =
     SyntaxFactory.ConstructorDeclaration(idType.Name)
     |> addModifiers [|SyntaxKind.PublicKeyword|]
     |> addParameter argName info.UnderlyingTypeSyntax
-    |?> (not idType.AllowNull, addBodyStatement checkForNull)
+    |?> (not info.AllowNull, addBodyStatement checkForNull)
     |> addBodyStatement assignProperty
 
-let private returnCallVoidMethodOnValue name idType =
+let private returnCallVoidMethodOnValue name info =
     ret
         (invocation
-            (thisMemberAccess idType.ValueProperty |> memberAccess name)
+            (info.ValueMemberAccess |> memberAccess name)
             Array.empty)
 
-let private makeIfValueNull fillBlock idType =
+let private makeIfValueNull fillBlock info =
     if'
-        (equals (thisMemberAccess idType.ValueProperty) Literal.Null)
+        (equals (info.ValueMemberAccess) Literal.Null)
         (fillBlock emptyBlock)
 
 let private makeToString info idType =
@@ -79,56 +83,66 @@ let private makeToString info idType =
         if isString then
             (ret (thisMemberAccess idType.ValueProperty))
         else
-            idType |> returnCallVoidMethodOnValue "ToString"
+            info |> returnCallVoidMethodOnValue "ToString"
 
-    let returnIfNull = idType |> makeIfValueNull (fun block ->
+    let returnIfNull = info |> makeIfValueNull (fun block ->
         block |> addStatement (ret Literal.EmptyString)
         )
 
     SyntaxFactory.MethodDeclaration(TypeSyntax.String, "ToString")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-    |?> ((idType.AllowNull && not isString), addBodyStatement returnIfNull)
+    |?> ((info.AllowNull && not isString), addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
 
 let private makeGetHashCode info idType =
-    let returnGetHashCode = idType |> returnCallVoidMethodOnValue "GetHashCode"
+    let returnGetHashCode = ret (getHashCode info.ValueMemberAccess)
 
-    let returnIfNull = idType |> makeIfValueNull (fun block ->
+    let returnIfNull = info |> makeIfValueNull (fun block ->
         block |> addStatement (ret Literal.Zero)
         )
 
     SyntaxFactory.MethodDeclaration(TypeSyntax.Int, "GetHashCode")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-    |?> (idType.AllowNull, addBodyStatement returnIfNull)
+    |?> (info.AllowNull, addBodyStatement returnIfNull)
     |> addBodyStatement returnGetHashCode
 
-let private makeEquals info idType =
-    let returnIfNull = idType |> makeIfValueNull (fun block ->
+let private makeEquals info (idType : IdType) =
+    let returnIfNull = info |> makeIfValueNull (fun block ->
         block |> addStatement (ret (Literal.Int 0))
         )
 
     let parameterName = "obj"
     let parameter = identifier parameterName
 
-    let notIs =
-        if' 
-            (not' (is info.GeneratedTypeSyntax parameter))
-            (block [|ret Literal.False|])
+    let notIs typeSyntax = not' (is typeSyntax parameter)
+    let incorrectTypeCondition = 
+        if idType.EqualsUnderlying then
+            and' (notIs info.GeneratedTypeSyntax) (notIs info.UnderlyingTypeSyntax) :> ExpressionSyntax
+        else
+            notIs info.GeneratedTypeSyntax :> ExpressionSyntax
+    let returnFalseForIncorrectType = if' incorrectTypeCondition (block [|ret Literal.False|])
 
-    let castParameterToType = cast info.GeneratedTypeSyntax parameter
+    let castParameterToType t = cast t parameter
+    
+    let returnEqualsValue expr = ret (objectEquals (identifier idType.ValueProperty) expr)
 
-    let returnSystemEquals =
-        ret (
-            invocation
-                (dottedMemberAccess' ["System"; "Object"; "Equals"])
-                [| identifier idType.ValueProperty; castParameterToType |> memberAccess idType.ValueProperty |]
-        )
+    let returnArgCastToIdValueEqualsValue =
+        returnEqualsValue ((castParameterToType info.GeneratedTypeSyntax) |> memberAccess idType.ValueProperty)
+
+    let returnArgCastToUnderlyingEqualsValue = 
+        returnEqualsValue (castParameterToType info.UnderlyingTypeSyntax)
+
+    let ifIsUnderlyingReturnEquals =
+        if'
+            (is info.UnderlyingTypeSyntax parameter)
+            (block [|returnArgCastToUnderlyingEqualsValue|])
 
     SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
     |> addParameter parameterName TypeSyntax.Object
-    |> addBodyStatement notIs
-    |> addBodyStatement returnSystemEquals
+    |> addBodyStatement returnFalseForIncorrectType
+    |?> (idType.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
+    |> addBodyStatement returnArgCastToIdValueEqualsValue
 
 let private addCast fromType toType cast expressionMaker generatedClass =
     let parameterName = "x"
@@ -168,9 +182,12 @@ let makeRootNode idType =
 
     let info =
         {
+            IdType = idType
+            AllowNull = idType.AllowNull && idType.Type.IsClass
             NamespaceProvided = namespaceProvided
             UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
             GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
+            ValueMemberAccess = thisMemberAccess idType.ValueProperty
         }
 
     let generatedClass = makeClass idType info

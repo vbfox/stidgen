@@ -144,6 +144,12 @@ let is checkedType expression = parenthesis(SyntaxFactory.BinaryExpression(Synta
 /// (left == right)
 let equals left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.EqualsExpression, left, right))
 
+/// (left || right)
+let or' left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.LogicalOrExpression, left, right))
+
+/// (left && right)
+let and' left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.LogicalAndExpression, left, right))
+
 /// !(expression)
 let not' expression = SyntaxFactory.PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, parenthesis expression)
 
@@ -167,3 +173,13 @@ let typenameof<'t> = TypeSyntax.FromType(typedefof<'t>)
 
 /// An empty file ("compilation unit")
 let emptyFile = SyntaxFactory.CompilationUnit()
+
+module WellKnownMethods =
+    /// System.Object.Equals(objA, objB)
+    let objectEquals objA objB = invocation (dottedMemberAccess' ["System"; "Object"; "Equals"]) [| objA; objB |]
+
+    /// x.ToString()
+    let toString x = invocation (memberAccess "ToString" x) Array.empty
+
+    /// x.GetHashCode()
+    let getHashCode x = invocation (memberAccess "GetHashCode" x) Array.empty

@@ -10,6 +10,7 @@ let main argv =
             { i with
                 Name = "TestId"
                 Namespace = "BlackFox.TestIdGeneration"
+                EqualsUnderlying = true
             }
         )
 
