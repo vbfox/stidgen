@@ -162,20 +162,29 @@ module private Equality =
         |> addParameter parameterName info.UnderlyingTypeSyntax
         |> addBodyStatement body
 
-let private addCast fromType toType cast expressionMaker generatedClass =
-    let parameterName = "x"
-    let makeCast cast' = 
-        SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(cast'), toType)
-            |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
-            |> addParameter parameterName fromType
-            |> addBodyStatement (SyntaxFactory.ReturnStatement(expressionMaker parameterName)) 
+module private Casts =
+    let addCast fromType toType cast expressionMaker generatedClass =
+        let parameterName = "x"
+        let makeCast cast' = 
+            SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(cast'), toType)
+                |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
+                |> addParameter parameterName fromType
+                |> addBodyStatement (SyntaxFactory.ReturnStatement(expressionMaker parameterName)) 
 
-    let addCast' cast' = generatedClass |> addMember (makeCast cast')
+        let addCast' cast' = generatedClass |> addMember (makeCast cast')
 
-    match cast with
-    | None -> generatedClass
-    | Implicit -> addCast' SyntaxKind.ImplicitKeyword
-    | Explicit -> addCast' SyntaxKind.ExplicitKeyword
+        match cast with
+        | None -> generatedClass
+        | Implicit -> addCast' SyntaxKind.ImplicitKeyword
+        | Explicit -> addCast' SyntaxKind.ExplicitKeyword
+
+    let addCastToUnderlyingType info generatedClass = 
+        addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax info.Id.CastToUnderlying
+            (fun n -> simpleMemberAccess n info.Id.ValueProperty)
+
+    let addCastFromUnderlyingType info generatedClass = 
+        addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax info.Id.CastFromUnderlying
+            (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
 
 let private iequatableTypeSyntax t =
     let iEquatable = typedefof<IEquatable<_>>
@@ -200,10 +209,8 @@ let private makeClass idType info =
         |> addMember' Equality.makeEquals
         |> addMember' Equality.makeEqualsGenerated
         |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
-        |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax idType.CastFromUnderlying
-            (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
-        |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax idType.CastToUnderlying
-            (fun n -> simpleMemberAccess n idType.ValueProperty)
+        |> Casts.addCastFromUnderlyingType info
+        |> Casts.addCastToUnderlyingType info
 
 let makeRootNode idType = 
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
