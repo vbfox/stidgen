@@ -15,7 +15,7 @@ open Microsoft.CodeAnalysis.Simplification
 
 type private ParsedInfo =
     {
-        IdType : IdType
+        Id : IdType
         AllowNull : bool
         NamespaceProvided : bool
         UnderlyingTypeSyntax : TypeSyntax
@@ -31,8 +31,8 @@ let private visibilityToKeyword = function
     | Private -> SyntaxKind.PrivateKeyword
     | Protected -> SyntaxKind.ProtectedKeyword
 
-let private makeValueProperty info idType =
-    SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, idType.ValueProperty)
+let private makeValueProperty info =
+    SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, info.Id.ValueProperty)
         .AddAccessorListAccessors(
             SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                 |> withSemicolon,
@@ -49,8 +49,8 @@ let private firstCharToLower (x:string) =
         let first = System.Char.ToLowerInvariant(x.[0])
         first.ToString() + x.Substring(1)
 
-let private makeCtor info idType =
-    let argName = firstCharToLower idType.ValueProperty
+let private makeCtor info =
+    let argName = firstCharToLower info.Id.ValueProperty
 
     let checkForNull =
         if'
@@ -58,9 +58,9 @@ let private makeCtor info idType =
             (block [|throw (objectCreation typenameof<ArgumentNullException> [|Literal.String argName|]) |])
 
     let assignProperty =
-        setThisMember idType.ValueProperty (SyntaxFactory.IdentifierName(argName))
+        setThisMember info.Id.ValueProperty (SyntaxFactory.IdentifierName(argName))
 
-    SyntaxFactory.ConstructorDeclaration(idType.Name)
+    SyntaxFactory.ConstructorDeclaration(info.Id.Name)
     |> addModifiers [|SyntaxKind.PublicKeyword|]
     |> addParameter argName info.UnderlyingTypeSyntax
     |?> (not info.AllowNull, addBodyStatement checkForNull)
@@ -77,11 +77,11 @@ let private makeIfValueNull fillBlock info =
         (equals (info.ValueMemberAccess) Literal.Null)
         (fillBlock emptyBlock)
 
-let private makeToString info idType =
-    let isString = idType.Type = typedefof<string>
+let private makeToString info =
+    let isString = info.Id.Type = typedefof<string>
     let returnToString =
         if isString then
-            (ret (thisMemberAccess idType.ValueProperty))
+            (ret (thisMemberAccess info.Id.ValueProperty))
         else
             info |> returnCallVoidMethodOnValue "ToString"
 
@@ -94,7 +94,7 @@ let private makeToString info idType =
     |?> ((info.AllowNull && not isString), addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
 
-let private makeGetHashCode info idType =
+let private makeGetHashCode info =
     let returnGetHashCode = ret (getHashCode info.ValueMemberAccess)
 
     let returnIfNull = info |> makeIfValueNull (fun block ->
@@ -106,7 +106,7 @@ let private makeGetHashCode info idType =
     |?> (info.AllowNull, addBodyStatement returnIfNull)
     |> addBodyStatement returnGetHashCode
 
-let private makeEquals info (idType : IdType) =
+let private makeEquals info =
     let returnIfNull = info |> makeIfValueNull (fun block ->
         block |> addStatement (ret (Literal.Int 0))
         )
@@ -116,7 +116,7 @@ let private makeEquals info (idType : IdType) =
 
     let notIs typeSyntax = not' (is typeSyntax parameter)
     let incorrectTypeCondition = 
-        if idType.EqualsUnderlying then
+        if info.Id.EqualsUnderlying then
             and' (notIs info.GeneratedTypeSyntax) (notIs info.UnderlyingTypeSyntax) :> ExpressionSyntax
         else
             notIs info.GeneratedTypeSyntax :> ExpressionSyntax
@@ -124,10 +124,10 @@ let private makeEquals info (idType : IdType) =
 
     let castParameterToType t = cast t parameter
     
-    let returnEqualsValue expr = ret (objectEquals (identifier idType.ValueProperty) expr)
+    let returnEqualsValue expr = ret (objectEquals (identifier info.Id.ValueProperty) expr)
 
     let returnArgCastToIdValueEqualsValue =
-        returnEqualsValue ((castParameterToType info.GeneratedTypeSyntax) |> memberAccess idType.ValueProperty)
+        returnEqualsValue ((castParameterToType info.GeneratedTypeSyntax) |> memberAccess info.Id.ValueProperty)
 
     let returnArgCastToUnderlyingEqualsValue = 
         returnEqualsValue (castParameterToType info.UnderlyingTypeSyntax)
@@ -141,7 +141,7 @@ let private makeEquals info (idType : IdType) =
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
     |> addParameter parameterName TypeSyntax.Object
     |> addBodyStatement returnFalseForIncorrectType
-    |?> (idType.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
+    |?> (info.Id.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
     |> addBodyStatement returnArgCastToIdValueEqualsValue
 
 let private addCast fromType toType cast expressionMaker generatedClass =
@@ -163,7 +163,7 @@ let private makeClass idType info =
     let visibility = visibilityToKeyword idType.Visibility
 
     let addMember' builder (decl : ClassDeclarationSyntax) =
-        decl |> addMember (idType |> builder info)
+        decl |> addMember (builder info)
 
     SyntaxFactory.ClassDeclaration(idType.Name)
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
@@ -182,7 +182,7 @@ let makeRootNode idType =
 
     let info =
         {
-            IdType = idType
+            Id = idType
             AllowNull = idType.AllowNull && idType.Type.IsClass
             NamespaceProvided = namespaceProvided
             UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
