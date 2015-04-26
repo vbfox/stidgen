@@ -66,4 +66,4 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
     idTypeBuilder idType
 
 let makeIdFromType<'t> (idTypeBuilder : IdType -> IdType) =
-    makeIdType typedefof<'t> idTypeBuilder
+    makeIdType typeof<'t> idTypeBuilder

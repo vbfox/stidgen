@@ -16,7 +16,6 @@ type TypeSyntax with
     static member String = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))
     static member Int = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
     static member Bool = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.BoolKeyword))
-    static member FromType (t:System.Type) = SyntaxFactory.ParseTypeName(t.FullName)
 
 module Literal = 
     let Null = SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
@@ -37,6 +36,10 @@ let addUsings (usings : string array) (compilationUnit : CompilationUnitSyntax) 
         SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(name)))
 
     compilationUnit.AddUsings(directives)
+
+let addBaseTypes (types : TypeSyntax array) (classDeclaration : ClassDeclarationSyntax) =
+    let baseTypes = types |> Array.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax)
+    classDeclaration.AddBaseListTypes(baseTypes)
 
 let inline addModifiers syntaxKinds (input:^T) =
     let tokens = syntaxKinds |> Array.map (fun k -> SyntaxFactory.Token(k))
@@ -91,6 +94,7 @@ let memberAccess (name : string) (onExpr : ExpressionSyntax) =
         (identifier name)
     )
 
+/// [|a;b;c|] expr -> expr.a.b.c
 let dottedMemberAccess (identifiers:string list) (expr: ExpressionSyntax) =
     let rec memberAccessRec (remaining:string list) = 
         match remaining with
@@ -168,9 +172,6 @@ let block (statements : StatementSyntax array) = SyntaxFactory.Block(statements)
 /// throw expression;
 let throw expression = SyntaxFactory.ThrowStatement(expression)
 
-/// typeof('t)
-let typenameof<'t> = TypeSyntax.FromType(typedefof<'t>)
-
 /// An empty file ("compilation unit")
 let emptyFile = SyntaxFactory.CompilationUnit()
 
@@ -183,3 +184,38 @@ module WellKnownMethods =
 
     /// x.GetHashCode()
     let getHashCode x = invocation (memberAccess "GetHashCode" x) Array.empty
+
+type TypeSyntax with
+    static member private Global = SyntaxFactory.IdentifierName(SyntaxFactory.Token(SyntaxKind.GlobalKeyword))
+    static member private PrefixWithGlobal name = SyntaxFactory.AliasQualifiedName(TypeSyntax.Global, name)
+
+    static member MakeQualified (parts : string array) =
+        parts |> Array.fold
+            (fun a b ->
+                if a = null then
+                    TypeSyntax.PrefixWithGlobal (SyntaxFactory.IdentifierName(b)) :> NameSyntax
+                else
+                    SyntaxFactory.QualifiedName(a, SyntaxFactory.IdentifierName(b)) :> NameSyntax
+            )
+            null
+
+    static member MakeGeneric (name : string) (types : TypeSyntax seq) =
+        let indexOfTilde = name.IndexOf('`')
+        let name = if indexOfTilde > 0 then name.Substring(0, indexOfTilde) else name
+        let typeList = SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList<TypeSyntax>(types))
+        SyntaxFactory.GenericName(name).WithTypeArgumentList(typeList)
+
+    static member FromType (t:System.Type) =
+        let namespaceExpression = TypeSyntax.MakeQualified (t.Namespace.Split('.'))
+    
+        let name =
+            if t.IsGenericType then
+                let types = t.GetGenericArguments() |> Array.map (fun t -> TypeSyntax.FromType t)
+                TypeSyntax.MakeGeneric t.Name types :> SimpleNameSyntax
+            else  
+                SyntaxFactory.IdentifierName(t.Name) :> SimpleNameSyntax
+    
+        SyntaxFactory.QualifiedName(namespaceExpression, name) :> TypeSyntax
+
+/// typeof('t)
+let typesyntaxof<'t> = TypeSyntax.FromType(typeof<'t>)

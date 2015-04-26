@@ -55,7 +55,7 @@ let private makeCtor info =
     let checkForNull =
         if'
             (equals (identifier argName) (Literal.Null))
-            (block [|throw (objectCreation typenameof<ArgumentNullException> [|Literal.String argName|]) |])
+            (block [|throw (objectCreation typesyntaxof<ArgumentNullException> [|Literal.String argName|]) |])
 
     let assignProperty =
         setThisMember info.Id.ValueProperty (SyntaxFactory.IdentifierName(argName))
@@ -94,55 +94,73 @@ let private makeToString info =
     |?> ((info.AllowNull && not isString), addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
 
-let private makeGetHashCode info =
-    let returnGetHashCode = ret (getHashCode info.ValueMemberAccess)
+module private Equality =
+    let private returnEqualsValue info expr = ret (objectEquals (identifier info.Id.ValueProperty) expr)
+    let makeGetHashCode info =
+        let returnGetHashCode = ret (getHashCode info.ValueMemberAccess)
 
-    let returnIfNull = info |> makeIfValueNull (fun block ->
-        block |> addStatement (ret Literal.Zero)
-        )
+        let returnIfNull = info |> makeIfValueNull (fun block ->
+            block |> addStatement (ret Literal.Zero)
+            )
 
-    SyntaxFactory.MethodDeclaration(TypeSyntax.Int, "GetHashCode")
-    |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-    |?> (info.AllowNull, addBodyStatement returnIfNull)
-    |> addBodyStatement returnGetHashCode
+        SyntaxFactory.MethodDeclaration(TypeSyntax.Int, "GetHashCode")
+        |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
+        |?> (info.AllowNull, addBodyStatement returnIfNull)
+        |> addBodyStatement returnGetHashCode
 
-let private makeEquals info =
-    let returnIfNull = info |> makeIfValueNull (fun block ->
-        block |> addStatement (ret (Literal.Int 0))
-        )
+    let makeEquals info =
+        let returnIfNull = info |> makeIfValueNull (fun block ->
+            block |> addStatement (ret (Literal.Int 0))
+            )
 
-    let parameterName = "obj"
-    let parameter = identifier parameterName
+        let parameterName = "other"
+        let parameter = identifier parameterName
 
-    let notIs typeSyntax = not' (is typeSyntax parameter)
-    let incorrectTypeCondition = 
-        if info.Id.EqualsUnderlying then
-            and' (notIs info.GeneratedTypeSyntax) (notIs info.UnderlyingTypeSyntax) :> ExpressionSyntax
-        else
-            notIs info.GeneratedTypeSyntax :> ExpressionSyntax
-    let returnFalseForIncorrectType = if' incorrectTypeCondition (block [|ret Literal.False|])
+        let notIs typeSyntax = not' (is typeSyntax parameter)
+        let incorrectTypeCondition = 
+            if info.Id.EqualsUnderlying then
+                and' (notIs info.GeneratedTypeSyntax) (notIs info.UnderlyingTypeSyntax) :> ExpressionSyntax
+            else
+                notIs info.GeneratedTypeSyntax :> ExpressionSyntax
+        let returnFalseForIncorrectType = if' incorrectTypeCondition (block [|ret Literal.False|])
 
-    let castParameterToType t = cast t parameter
+        let castParameterToType t = cast t parameter
     
-    let returnEqualsValue expr = ret (objectEquals (identifier info.Id.ValueProperty) expr)
+        let returnArgCastToIdValueEqualsValue =
+            returnEqualsValue info ((castParameterToType info.GeneratedTypeSyntax) |> memberAccess info.Id.ValueProperty)
 
-    let returnArgCastToIdValueEqualsValue =
-        returnEqualsValue ((castParameterToType info.GeneratedTypeSyntax) |> memberAccess info.Id.ValueProperty)
+        let returnArgCastToUnderlyingEqualsValue = 
+            returnEqualsValue info (castParameterToType info.UnderlyingTypeSyntax)
 
-    let returnArgCastToUnderlyingEqualsValue = 
-        returnEqualsValue (castParameterToType info.UnderlyingTypeSyntax)
+        let ifIsUnderlyingReturnEquals =
+            if'
+                (is info.UnderlyingTypeSyntax parameter)
+                (block [|returnArgCastToUnderlyingEqualsValue|])
 
-    let ifIsUnderlyingReturnEquals =
-        if'
-            (is info.UnderlyingTypeSyntax parameter)
-            (block [|returnArgCastToUnderlyingEqualsValue|])
+        SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
+        |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
+        |> addParameter parameterName TypeSyntax.Object
+        |> addBodyStatement returnFalseForIncorrectType
+        |?> (info.Id.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
+        |> addBodyStatement returnArgCastToIdValueEqualsValue
 
-    SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
-    |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-    |> addParameter parameterName TypeSyntax.Object
-    |> addBodyStatement returnFalseForIncorrectType
-    |?> (info.Id.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
-    |> addBodyStatement returnArgCastToIdValueEqualsValue
+    let makeEqualsGenerated info =
+        let parameterName = "other"
+        let body = returnEqualsValue info (identifier parameterName |> memberAccess info.Id.ValueProperty)
+
+        SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
+        |> addModifiers [|SyntaxKind.PublicKeyword|]
+        |> addParameter parameterName info.GeneratedTypeSyntax
+        |> addBodyStatement body
+        
+    let makeEqualsUnderlying info =
+        let parameterName = "other"
+        let body = returnEqualsValue info (identifier parameterName)
+
+        SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
+        |> addModifiers [|SyntaxKind.PublicKeyword|]
+        |> addParameter parameterName info.UnderlyingTypeSyntax
+        |> addBodyStatement body
 
 let private addCast fromType toType cast expressionMaker generatedClass =
     let parameterName = "x"
@@ -159,6 +177,12 @@ let private addCast fromType toType cast expressionMaker generatedClass =
     | Implicit -> addCast' SyntaxKind.ImplicitKeyword
     | Explicit -> addCast' SyntaxKind.ExplicitKeyword
 
+let private iequatableTypeSyntax t =
+    let iEquatable = typedefof<IEquatable<_>>
+    let ns = TypeSyntax.MakeQualified(iEquatable.Namespace.Split('.'))
+
+    TypeSyntax.MakeGeneric iEquatable.Name [|t|]
+
 let private makeClass idType info = 
     let visibility = visibilityToKeyword idType.Visibility
 
@@ -166,12 +190,16 @@ let private makeClass idType info =
         decl |> addMember (builder info)
 
     SyntaxFactory.ClassDeclaration(idType.Name)
+        |> addBaseTypes [| iequatableTypeSyntax info.GeneratedTypeSyntax |]
+        |?> (info.Id.EqualsUnderlying, addBaseTypes [| iequatableTypeSyntax info.UnderlyingTypeSyntax |])
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
         |> addMember' makeValueProperty
         |> addMember' makeCtor
         |> addMember' makeToString
-        |> addMember' makeGetHashCode
-        |> addMember' makeEquals
+        |> addMember' Equality.makeGetHashCode
+        |> addMember' Equality.makeEquals
+        |> addMember' Equality.makeEqualsGenerated
+        |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
         |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax idType.CastFromUnderlying
             (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
         |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax idType.CastToUnderlying
