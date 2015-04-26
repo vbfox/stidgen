@@ -45,25 +45,13 @@ let private firstCharToLower (x:string) =
         let first = System.Char.ToLowerInvariant(x.[0])
         first.ToString() + x.Substring(1)
 
-let private typenameof<'t> = SyntaxFactory.ParseTypeName(typedefof<'t>.FullName)
-
 let private makeCtor info idType =
     let argName = firstCharToLower idType.ValueProperty
 
-    let checkForNull = 
-        SyntaxFactory.IfStatement(
-            SyntaxFactory.BinaryExpression(
-                SyntaxKind.EqualsExpression,
-                SyntaxFactory.IdentifierName(argName),
-                SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
-            ),
-            SyntaxFactory.Block(
-                SyntaxFactory.ThrowStatement(
-                    SyntaxFactory.ObjectCreationExpression(typenameof<ArgumentNullException>)
-                    |> addArgument (stringLiteral argName)
-                )
-            )
-        )
+    let checkForNull =
+        if'
+            (equals (identifier argName) (Literal.Null))
+            (block [|throw (objectCreation typenameof<ArgumentNullException> [|Literal.String argName|]) |])
 
     let assignProperty =
         setThisMember idType.ValueProperty (SyntaxFactory.IdentifierName(argName))
@@ -74,7 +62,7 @@ let private makeCtor info idType =
     |?> (not idType.AllowNull, addBodyStatement checkForNull)
     |> addBodyStatement assignProperty
 
-let private callVoidMethodOnValue name idType =
+let private returnCallVoidMethodOnValue name idType =
     SyntaxFactory.ReturnStatement(
         SyntaxFactory.InvocationExpression(
             thisMemberAccess idType.ValueProperty |> memberAccess name
@@ -82,45 +70,69 @@ let private callVoidMethodOnValue name idType =
     )
 
 let private makeIfValueNull fillBlock idType =
-        SyntaxFactory.IfStatement(
-            SyntaxFactory.BinaryExpression(
-                SyntaxKind.EqualsExpression,
-                thisMemberAccess idType.ValueProperty,
-                nullLiteral),
-            fillBlock(SyntaxFactory.Block())
-        )
+    if'
+        (equals (thisMemberAccess idType.ValueProperty) Literal.Null)
+        (fillBlock emptyBlock)
 
 let private makeToString info idType =
-    let returnToString = idType |> callVoidMethodOnValue "ToString"
+    let returnToString = idType |> returnCallVoidMethodOnValue "ToString"
 
     let returnIfNull = idType |> makeIfValueNull (fun block ->
-        block |> addStatement (SyntaxFactory.ReturnStatement(stringLiteral ""))
+        block |> addStatement (ret Literal.EmptyString)
         )
 
-    SyntaxFactory.MethodDeclaration(stringTypeSyntax, "ToString")
+    SyntaxFactory.MethodDeclaration(TypeSyntax.String, "ToString")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
     |?> (idType.AllowNull, addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
 
 let private makeGetHashCode info idType =
-    let returnGetHashCode = idType |> callVoidMethodOnValue "GetHashCode"
+    let returnGetHashCode = idType |> returnCallVoidMethodOnValue "GetHashCode"
 
     let returnIfNull = idType |> makeIfValueNull (fun block ->
-        block |> addStatement (SyntaxFactory.ReturnStatement(intLiteral 0))
+        block |> addStatement (ret Literal.Zero)
         )
 
-    SyntaxFactory.MethodDeclaration(intTypeSyntax, "GetHashCode")
+    SyntaxFactory.MethodDeclaration(TypeSyntax.Int, "GetHashCode")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
     |?> (idType.AllowNull, addBodyStatement returnIfNull)
     |> addBodyStatement returnGetHashCode
 
+let private makeEquals info idType =
+    let returnIfNull = idType |> makeIfValueNull (fun block ->
+        block |> addStatement (ret (Literal.Int 0))
+        )
+
+    let parameterName = "obj"
+    let parameter = identifier parameterName
+
+    let notIs =
+        if' 
+            (not' (is info.GeneratedTypeSyntax parameter))
+            (block [|ret Literal.False|])
+
+    let castParameterToType = cast info.GeneratedTypeSyntax parameter
+
+    let returnSystemEquals =
+        ret (
+            invocation
+                (dottedMemberAccess' ["System"; "Object"; "Equals"])
+                [| identifier idType.ValueProperty; castParameterToType |> memberAccess idType.ValueProperty |]
+        )
+
+    SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
+    |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
+    |> addParameter parameterName TypeSyntax.Object
+    |> addBodyStatement notIs
+    |> addBodyStatement returnSystemEquals
+
 let private addCast fromType toType cast expressionMaker generatedClass =
-    let paramName = "x"
+    let parameterName = "x"
     let makeCast cast' = 
         SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(cast'), toType)
             |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
-            |> addParameter paramName fromType
-            |> addBodyStatement (SyntaxFactory.ReturnStatement(expressionMaker paramName)) 
+            |> addParameter parameterName fromType
+            |> addBodyStatement (SyntaxFactory.ReturnStatement(expressionMaker parameterName)) 
 
     let addCast' cast' = generatedClass |> addMember (makeCast cast')
 
@@ -141,6 +153,7 @@ let private makeClass idType info =
         |> addMember' makeCtor
         |> addMember' makeToString
         |> addMember' makeGetHashCode
+        |> addMember' makeEquals
         |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax idType.CastFromUnderlying
             (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
         |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax idType.CastToUnderlying
@@ -148,12 +161,12 @@ let private makeClass idType info =
 
 let makeRootNode idType = 
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
-    let generatedFullName = if namespaceProvided then idType.Namespace + "." + idType.Name else idType.Name
+
     let info =
         {
             NamespaceProvided = namespaceProvided
             UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
-            GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(generatedFullName)
+            GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
         }
 
     let generatedClass = makeClass idType info
@@ -165,9 +178,9 @@ let makeRootNode idType =
             SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
                 .AddMembers(generatedClass) :> MemberDeclarationSyntax
 
-    SyntaxFactory.CompilationUnit()
-        .AddUsings("System")
-        .AddMembers(rootMember)
+    emptyFile
+        |> addUsings [|"System"|]
+        |> addMember rootMember
 
 let private makeDocument (rootNode:SyntaxNode) =
     let workspace = new AdhocWorkspace()
