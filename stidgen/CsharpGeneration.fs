@@ -79,7 +79,7 @@ let private makeIfValueNull fillBlock info =
         (fillBlock emptyBlock)
 
 let private makeToString info =
-    let isString = info.Id.Type = typedefof<string>
+    let isString = info.Id.UnderlyingType = typedefof<string>
     let returnToString =
         if isString then
             (ret (thisMemberAccess info.Id.ValueProperty))
@@ -113,12 +113,12 @@ module private Equality =
     /// Call the most adapted underlying equals method between underlying-typed expressions.
     let private underlyingEquals info exprA exprB =
         let opEquality =
-            info.Id.Type.GetMethod(
+            info.Id.UnderlyingType.GetMethod(
                 "op_Equality",
                 BindingFlags.Static ||| BindingFlags.Public,
                 null,
                 CallingConventions.Any,
-                [|info.Id.Type;info.Id.Type|],
+                [|info.Id.UnderlyingType;info.Id.UnderlyingType|],
                 null)
         
         if opEquality <> null then
@@ -295,7 +295,7 @@ module private Convertible =
             |> Array.fold (fun decl m -> decl |> addMember (makeMember m info)) classDeclaration
 
     let addIConvertibleMembers info (classDeclaration : ClassDeclarationSyntax) =
-        if iconvertible.IsAssignableFrom(info.Id.Type) then
+        if iconvertible.IsAssignableFrom(info.Id.UnderlyingType) then
             classDeclaration
             |> addIConvertibleMethods info
             |> addBaseTypes [| iconvertibleName |]
@@ -331,9 +331,9 @@ let makeRootNode idType =
     let info =
         {
             Id = idType
-            AllowNull = idType.AllowNull && idType.Type.IsClass
+            AllowNull = idType.AllowNull && idType.UnderlyingType.IsClass
             NamespaceProvided = namespaceProvided
-            UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
+            UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.UnderlyingType.FullName)
             GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
             ThisValueMemberAccess = thisMemberAccess idType.ValueProperty
             ValueAccess = (fun expr -> expr |> dottedMemberAccess [idType.ValueProperty])

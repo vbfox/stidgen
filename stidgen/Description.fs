@@ -28,7 +28,7 @@ type IdType =
         Namespace : string
 
         /// Underlying type
-        Type : Type
+        UnderlyingType : Type
 
         /// Name of the "value" property
         ValueProperty : string
@@ -54,7 +54,7 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
         {
             Name = "Id";
             Namespace = ""
-            Type = targetType;
+            UnderlyingType = targetType;
             ValueProperty = "Value"
             Visibility = Public
             AllowNull = false
