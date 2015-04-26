@@ -162,6 +162,12 @@ module private Equality =
         |> addParameter parameterName info.UnderlyingTypeSyntax
         |> addBodyStatement body
 
+    let iequatableOf t =
+        let iEquatable = typedefof<IEquatable<_>>
+        let ns = TypeSyntax.MakeQualified(iEquatable.Namespace.Split('.'))
+
+        TypeSyntax.MakeGeneric iEquatable.Name [|t|]
+
 module private Casts =
     let addCast fromType toType cast expressionMaker generatedClass =
         let parameterName = "x"
@@ -179,18 +185,14 @@ module private Casts =
         | Explicit -> addCast' SyntaxKind.ExplicitKeyword
 
     let addCastToUnderlyingType info generatedClass = 
-        addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax info.Id.CastToUnderlying
+        generatedClass
+        |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax info.Id.CastToUnderlying
             (fun n -> simpleMemberAccess n info.Id.ValueProperty)
 
     let addCastFromUnderlyingType info generatedClass = 
-        addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax info.Id.CastFromUnderlying
+        generatedClass
+        |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax info.Id.CastFromUnderlying
             (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
-
-let private iequatableTypeSyntax t =
-    let iEquatable = typedefof<IEquatable<_>>
-    let ns = TypeSyntax.MakeQualified(iEquatable.Namespace.Split('.'))
-
-    TypeSyntax.MakeGeneric iEquatable.Name [|t|]
 
 let private makeClass idType info = 
     let visibility = visibilityToKeyword idType.Visibility
@@ -199,8 +201,8 @@ let private makeClass idType info =
         decl |> addMember (builder info)
 
     SyntaxFactory.ClassDeclaration(idType.Name)
-        |> addBaseTypes [| iequatableTypeSyntax info.GeneratedTypeSyntax |]
-        |?> (info.Id.EqualsUnderlying, addBaseTypes [| iequatableTypeSyntax info.UnderlyingTypeSyntax |])
+        |> addBaseTypes [| Equality.iequatableOf info.GeneratedTypeSyntax |]
+        |?> (info.Id.EqualsUnderlying, addBaseTypes [| Equality.iequatableOf info.UnderlyingTypeSyntax |])
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
         |> addMember' makeValueProperty
         |> addMember' makeCtor
