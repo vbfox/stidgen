@@ -1,6 +1,12 @@
 source https://nuget.org/api/v2
 
-nuget FAKE
+// Code
 nuget Microsoft.CodeAnalysis prerelease
+
+// Unit tests
 nuget NUnit
 nuget NFluent
+
+// Build infrastructure
+nuget FAKE
+nuget NUnit.Runners
