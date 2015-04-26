@@ -2,11 +2,10 @@
 
 open BlackFox.Stidgen.Description
 open BlackFox.Stidgen.CsharpGeneration
+open System.IO
 
-[<EntryPoint>]
-let main argv = 
-    // public BlackFox.Tests.TestId : string { Value }
-    let idType = makeIdFromType<string> (fun i ->
+let getIdType () =
+    makeIdFromType<string> (fun i ->
             { i with
                 Name = "TestId"
                 Namespace = "BlackFox.TestIdGeneration"
@@ -14,7 +13,21 @@ let main argv =
             }
         )
 
-    printf "%s" (idTypeToString idType)
+let writeToFile fileName idType =
+    let text = idTypeToString idType
+    File.WriteAllText(fileName, text)
 
+let printOnConsole idType = 
+    let text = idTypeToString idType
+    printf "%s" text
     System.Console.ReadLine() |> ignore
-    0 // return an integer exit code
+
+[<EntryPoint>]
+let main argv = 
+    let idType = getIdType ()
+    if argv.Length > 0 then
+        writeToFile argv.[0] idType
+    else
+        printOnConsole idType
+
+    0
