@@ -99,6 +99,7 @@ let dottedMemberAccess (identifiers:string list) (expr: ExpressionSyntax) =
 
     memberAccessRec (List.rev identifiers)
 
+/// [|a;b;c|] -> a.b.c
 let dottedMemberAccess' identifiers =
     match identifiers with
     | [] -> failwith "No identifiers provided"
@@ -120,6 +121,7 @@ let objectCreation createdType argumentExpressions =
     SyntaxFactory.ObjectCreationExpression(createdType)
         .WithArgumentList(argList)
 
+/// expression(argumentExpressions);
 let invocation (expression : ExpressionSyntax) (argumentExpressions : ExpressionSyntax array) =
     let args = argumentExpressions |> Array.map (fun a -> SyntaxFactory.Argument(a))
     let argList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList<ArgumentSyntax>(args))

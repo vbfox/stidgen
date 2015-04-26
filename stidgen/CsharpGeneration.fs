@@ -63,11 +63,10 @@ let private makeCtor info idType =
     |> addBodyStatement assignProperty
 
 let private returnCallVoidMethodOnValue name idType =
-    SyntaxFactory.ReturnStatement(
-        SyntaxFactory.InvocationExpression(
-            thisMemberAccess idType.ValueProperty |> memberAccess name
-        )
-    )
+    ret
+        (invocation
+            (thisMemberAccess idType.ValueProperty |> memberAccess name)
+            Array.empty)
 
 let private makeIfValueNull fillBlock idType =
     if'
@@ -75,7 +74,12 @@ let private makeIfValueNull fillBlock idType =
         (fillBlock emptyBlock)
 
 let private makeToString info idType =
-    let returnToString = idType |> returnCallVoidMethodOnValue "ToString"
+    let isString = idType.Type = typedefof<string>
+    let returnToString =
+        if isString then
+            (ret (thisMemberAccess idType.ValueProperty))
+        else
+            idType |> returnCallVoidMethodOnValue "ToString"
 
     let returnIfNull = idType |> makeIfValueNull (fun block ->
         block |> addStatement (ret Literal.EmptyString)
@@ -83,7 +87,7 @@ let private makeToString info idType =
 
     SyntaxFactory.MethodDeclaration(TypeSyntax.String, "ToString")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-    |?> (idType.AllowNull, addBodyStatement returnIfNull)
+    |?> ((idType.AllowNull && not isString), addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
 
 let private makeGetHashCode info idType =
