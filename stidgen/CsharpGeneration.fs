@@ -162,11 +162,10 @@ module private Equality =
         |> addParameter parameterName info.UnderlyingTypeSyntax
         |> addBodyStatement body
 
+    let private iEquatable = typedefof<IEquatable<_>>
+    let private iEquatableNamespace = NameSyntax.MakeQualified(iEquatable.Namespace.Split('.'))
     let iequatableOf t =
-        let iEquatable = typedefof<IEquatable<_>>
-        let ns = TypeSyntax.MakeQualified(iEquatable.Namespace.Split('.'))
-
-        TypeSyntax.MakeGeneric iEquatable.Name [|t|]
+        SyntaxFactory.QualifiedName(iEquatableNamespace, NameSyntax.MakeGeneric iEquatable.Name [|t|])
 
 module private Casts =
     let addCast fromType toType cast expressionMaker generatedClass =
@@ -194,6 +193,44 @@ module private Casts =
         |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax info.Id.CastFromUnderlying
             (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
 
+module private Convertible =
+    open System.Reflection
+    
+    let private iconvertible = typeof<IConvertible>
+    let private iconvertibleName = namesyntaxof<IConvertible>
+
+    let makeMember (m : MethodInfo) info =
+        // Initial declaration
+        let returnType = NameSyntax.FromType m.ReturnType
+        let declaration =
+            SyntaxFactory.MethodDeclaration(returnType, m.Name)
+                .WithExplicitInterfaceSpecifier(SyntaxFactory.ExplicitInterfaceSpecifier(iconvertibleName))
+
+        // Add parameters
+        let parameters = m.GetParameters() |> Array.map (fun p -> (p.Name, NameSyntax.FromType p.ParameterType))
+        let declaration = parameters |> Seq.fold (fun decl (name, type') -> decl |> addParameter name type') declaration
+
+        // Add body
+        let parametersForCall = parameters |> Array.map (fun (name, _) -> identifier name :> ExpressionSyntax)
+        let body = 
+            ret
+                (invocation
+                    (info.ValueMemberAccess |> cast iconvertibleName |> memberAccess m.Name)
+                    parametersForCall)
+        declaration |> addBodyStatement body
+
+    let private addIConvertibleMethods info (classDeclaration : ClassDeclarationSyntax) =
+        iconvertible.GetMethods()
+            |> Array.fold (fun decl m -> decl |> addMember (makeMember m info)) classDeclaration
+
+    let addIConvertibleMembers info (classDeclaration : ClassDeclarationSyntax) =
+        if iconvertible.IsAssignableFrom(info.Id.Type) then
+            classDeclaration
+            |> addIConvertibleMethods info
+            |> addBaseTypes [| iconvertibleName |]
+        else
+            classDeclaration
+
 let private makeClass idType info = 
     let visibility = visibilityToKeyword idType.Visibility
 
@@ -213,6 +250,7 @@ let private makeClass idType info =
         |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
         |> Casts.addCastFromUnderlyingType info
         |> Casts.addCastToUnderlyingType info
+        |> Convertible.addIConvertibleMembers info
 
 let makeRootNode idType = 
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))

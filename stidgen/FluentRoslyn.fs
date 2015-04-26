@@ -185,15 +185,15 @@ module WellKnownMethods =
     /// x.GetHashCode()
     let getHashCode x = invocation (memberAccess "GetHashCode" x) Array.empty
 
-type TypeSyntax with
+type NameSyntax with
     static member private Global = SyntaxFactory.IdentifierName(SyntaxFactory.Token(SyntaxKind.GlobalKeyword))
-    static member private PrefixWithGlobal name = SyntaxFactory.AliasQualifiedName(TypeSyntax.Global, name)
+    static member private PrefixWithGlobal name = SyntaxFactory.AliasQualifiedName(NameSyntax.Global, name)
 
     static member MakeQualified (parts : string array) =
         parts |> Array.fold
             (fun a b ->
                 if a = null then
-                    TypeSyntax.PrefixWithGlobal (SyntaxFactory.IdentifierName(b)) :> NameSyntax
+                    NameSyntax.PrefixWithGlobal (SyntaxFactory.IdentifierName(b)) :> NameSyntax
                 else
                     SyntaxFactory.QualifiedName(a, SyntaxFactory.IdentifierName(b)) :> NameSyntax
             )
@@ -206,16 +206,21 @@ type TypeSyntax with
         SyntaxFactory.GenericName(name).WithTypeArgumentList(typeList)
 
     static member FromType (t:System.Type) =
-        let namespaceExpression = TypeSyntax.MakeQualified (t.Namespace.Split('.'))
+        let namespaceExpression = NameSyntax.MakeQualified (t.Namespace.Split('.'))
     
         let name =
             if t.IsGenericType then
-                let types = t.GetGenericArguments() |> Array.map (fun t -> TypeSyntax.FromType t)
-                TypeSyntax.MakeGeneric t.Name types :> SimpleNameSyntax
+                let types = t.GetGenericArguments() |> Array.map (fun t -> NameSyntax.FromType t :> TypeSyntax)
+                NameSyntax.MakeGeneric t.Name types :> SimpleNameSyntax
             else  
                 SyntaxFactory.IdentifierName(t.Name) :> SimpleNameSyntax
     
-        SyntaxFactory.QualifiedName(namespaceExpression, name) :> TypeSyntax
+        let fullName = SyntaxFactory.QualifiedName(namespaceExpression, name)
+
+        fullName :> NameSyntax
 
 /// typeof('t)
-let typesyntaxof<'t> = TypeSyntax.FromType(typeof<'t>)
+let namesyntaxof<'t> = NameSyntax.FromType(typeof<'t>)
+
+/// typeof('t)
+let typesyntaxof<'t> = NameSyntax.FromType(typeof<'t>) :> TypeSyntax
