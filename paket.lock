@@ -1,6 +1,7 @@
 NUGET
   remote: https://nuget.org/api/v2
   specs:
+    FAKE (3.28.8)
     Microsoft.CodeAnalysis (1.0.0-rc1)
       Microsoft.CodeAnalysis.CSharp.Workspaces (1.0.0-rc1)
       Microsoft.CodeAnalysis.VisualBasic.Workspaces (1.0.0-rc1)
