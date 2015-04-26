@@ -20,7 +20,8 @@ type private ParsedInfo =
         NamespaceProvided : bool
         UnderlyingTypeSyntax : TypeSyntax
         GeneratedTypeSyntax : TypeSyntax
-        ValueMemberAccess : MemberAccessExpressionSyntax
+        ThisValueMemberAccess : MemberAccessExpressionSyntax
+        ValueAccess : ExpressionSyntax -> ExpressionSyntax
     }
 
 let private (|?>) x (c, f) = if c then f x else x
@@ -69,12 +70,12 @@ let private makeCtor info =
 let private returnCallVoidMethodOnValue name info =
     ret
         (invocation
-            (info.ValueMemberAccess |> memberAccess name)
+            (info.ThisValueMemberAccess |> memberAccess name)
             Array.empty)
 
 let private makeIfValueNull fillBlock info =
     if'
-        (equals (info.ValueMemberAccess) Literal.Null)
+        (equals (info.ThisValueMemberAccess) Literal.Null)
         (fillBlock emptyBlock)
 
 let private makeToString info =
@@ -95,9 +96,10 @@ let private makeToString info =
     |> addBodyStatement returnToString
 
 module private Equality =
-    let private returnEqualsValue info expr = ret (objectEquals (identifier info.Id.ValueProperty) expr)
+    open System.Reflection
+
     let makeGetHashCode info =
-        let returnGetHashCode = ret (getHashCode info.ValueMemberAccess)
+        let returnGetHashCode = ret (getHashCode info.ThisValueMemberAccess)
 
         let returnIfNull = info |> makeIfValueNull (fun block ->
             block |> addStatement (ret Literal.Zero)
@@ -108,13 +110,60 @@ module private Equality =
         |?> (info.AllowNull, addBodyStatement returnIfNull)
         |> addBodyStatement returnGetHashCode
 
+    /// Call the most adapted underlying equals method between underlying-typed expressions.
+    let private underlyingEquals info exprA exprB =
+        let opEquality =
+            info.Id.Type.GetMethod(
+                "op_Equality",
+                BindingFlags.Static ||| BindingFlags.Public,
+                null,
+                CallingConventions.Any,
+                [|info.Id.Type;info.Id.Type|],
+                null)
+        
+        if opEquality <> null then
+            // Prefer the == operator as for CLR implementations it's an obvious optimization for native types and strings
+            equals exprA exprB :> ExpressionSyntax
+        else
+            // Otherwise Object.Equals is a safe choice
+            objectEquals exprA exprB :> ExpressionSyntax
+
+    let private thisValueEquals info expr =
+        underlyingEquals info info.ThisValueMemberAccess expr
+
+    let makeStaticEquals info =
+        let parameterA = identifier "a"
+        let parameterB = identifier "b"
+        let objectA = cast TypeSyntax.Object parameterA
+        let objectB = cast TypeSyntax.Object parameterB
+
+        let referenceEquals =
+            if'
+                (equals objectA objectB)
+                (block [|ret Literal.True|])
+
+        let oneIsNull = 
+            if'
+                (or' (equals objectA Literal.Null) (equals objectB Literal.Null))
+                (block [|ret Literal.False|])
+
+        let value x = x :> ExpressionSyntax |> info.ValueAccess
+
+        let finalRet = ret (underlyingEquals info (value parameterA) (value parameterB))
+
+        SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
+        |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword|]
+        |> addParameter "a" info.GeneratedTypeSyntax
+        |> addParameter "b" info.GeneratedTypeSyntax
+        |> addBodyStatements [| referenceEquals; oneIsNull; finalRet |]
+
     let makeEquals info =
         let returnIfNull = info |> makeIfValueNull (fun block ->
             block |> addStatement (ret (Literal.Int 0))
             )
 
         let parameterName = "other"
-        let parameter = identifier parameterName
+        let parameter = identifier parameterName :> ExpressionSyntax
 
         let notIs typeSyntax = not' (is typeSyntax parameter)
         let incorrectTypeCondition = 
@@ -124,18 +173,20 @@ module private Equality =
                 notIs info.GeneratedTypeSyntax :> ExpressionSyntax
         let returnFalseForIncorrectType = if' incorrectTypeCondition (block [|ret Literal.False|])
 
-        let castParameterToType t = cast t parameter
-    
-        let returnArgCastToIdValueEqualsValue =
-            returnEqualsValue info ((castParameterToType info.GeneratedTypeSyntax) |> memberAccess info.Id.ValueProperty)
-
         let returnArgCastToUnderlyingEqualsValue = 
-            returnEqualsValue info (castParameterToType info.UnderlyingTypeSyntax)
+            ret (thisValueEquals info (parameter |> cast info.UnderlyingTypeSyntax))
 
         let ifIsUnderlyingReturnEquals =
             if'
                 (is info.UnderlyingTypeSyntax parameter)
                 (block [|returnArgCastToUnderlyingEqualsValue|])
+
+        let returnArgCastToIdValueEqualsValue =
+            ret (
+                thisValueEquals
+                    info
+                    (parameter |> cast info.GeneratedTypeSyntax :> ExpressionSyntax |> info.ValueAccess)
+                )
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
@@ -146,7 +197,8 @@ module private Equality =
 
     let makeEqualsGenerated info =
         let parameterName = "other"
-        let body = returnEqualsValue info (identifier parameterName |> memberAccess info.Id.ValueProperty)
+        let parameter = identifier parameterName :> ExpressionSyntax
+        let body = ret (thisValueEquals info (info.ValueAccess parameter))
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword|]
@@ -155,7 +207,8 @@ module private Equality =
         
     let makeEqualsUnderlying info =
         let parameterName = "other"
-        let body = returnEqualsValue info (identifier parameterName)
+        let parameter = identifier parameterName :> ExpressionSyntax
+        let body = ret (thisValueEquals info parameter)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword|]
@@ -233,7 +286,7 @@ module private Convertible =
         let body = 
             ret
                 (invocation
-                    (info.ValueMemberAccess |> cast iconvertibleName |> memberAccess m.Name)
+                    (info.ThisValueMemberAccess |> cast iconvertibleName |> memberAccess m.Name)
                     parametersForCall)
         declaration |> addBodyStatement body
 
@@ -265,6 +318,7 @@ let private makeClass idType info =
         |> addMember' Equality.makeGetHashCode
         |> addMember' Equality.makeEquals
         |> addMember' Equality.makeEqualsGenerated
+        |> addMember' Equality.makeStaticEquals
         |> Equality.addOperators info
         |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
         |> Casts.addCastFromUnderlyingType info
@@ -281,7 +335,8 @@ let makeRootNode idType =
             NamespaceProvided = namespaceProvided
             UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.Type.FullName)
             GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
-            ValueMemberAccess = thisMemberAccess idType.ValueProperty
+            ThisValueMemberAccess = thisMemberAccess idType.ValueProperty
+            ValueAccess = (fun expr -> expr |> dottedMemberAccess [idType.ValueProperty])
         }
 
     let generatedClass = makeClass idType info

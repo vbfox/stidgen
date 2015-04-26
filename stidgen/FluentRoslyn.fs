@@ -57,8 +57,11 @@ let inline addArgument expression (input:^T) =
     let argument = SyntaxFactory.Argument(expression)
     (^T : (member AddArgumentListArguments : ArgumentSyntax array -> ^T) (input, [|argument|]))
 
-let inline addBodyStatement statement (input:^T) =
-    (^T : (member AddBodyStatements : StatementSyntax array -> ^T) (input, [|statement|]))
+let inline addBodyStatements statements (input:^T) =
+    (^T : (member AddBodyStatements : StatementSyntax array -> ^T) (input, statements))
+
+let inline addBodyStatement statement input =
+    input |> addBodyStatements [|statement|] 
    
 let inline addMember member' (input:^T) =
     (^T : (member AddMembers : MemberDeclarationSyntax array -> ^T) (input, [|member'|]))
