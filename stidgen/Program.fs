@@ -6,7 +6,7 @@ open BlackFox.Stidgen.CsharpGeneration
 [<EntryPoint>]
 let main argv = 
     // public BlackFox.Tests.TestId : string { Value }
-    let idType = makeIdType<string> (fun i ->
+    let idType = makeIdFromType<string> (fun i ->
             { i with
                 Name = "TestId"
                 Namespace = "BlackFox.TestIdGeneration"

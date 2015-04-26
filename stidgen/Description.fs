@@ -24,8 +24,7 @@ type IdType =
         CastToUnderlying : Cast
     }
 
-let makeIdType<'t> (idTypeBuilder : IdType -> IdType) =
-    let targetType = typedefof<'t>;
+let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) = 
     let idType = 
         {
             Name = "Id";
@@ -39,3 +38,6 @@ let makeIdType<'t> (idTypeBuilder : IdType -> IdType) =
         }
 
     idTypeBuilder idType
+
+let makeIdFromType<'t> (idTypeBuilder : IdType -> IdType) =
+    makeIdType typedefof<'t> idTypeBuilder

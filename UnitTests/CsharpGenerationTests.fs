@@ -7,7 +7,7 @@ open NUnit.Framework
 
 [<Test>]
 let ``string`` () =
-    let idType = makeIdType<string> (fun i ->
+    let idType = makeIdFromType<string> (fun i ->
             { i with
                 Namespace = "BlackFox.Tests"
                 AllowNull = false
@@ -50,7 +50,7 @@ namespace BlackFox.Tests
 
 [<Test>]
 let ``string allow null`` () =
-    let idType = makeIdType<string> (fun i ->
+    let idType = makeIdFromType<string> (fun i ->
             { i with
                 Namespace = "BlackFox.Tests"
                 AllowNull = true
@@ -98,7 +98,7 @@ namespace BlackFox.Tests
 
 [<Test>]
 let ``no namespace`` () =
-    let idType = makeIdType<string> (fun i ->
+    let idType = makeIdFromType<string> (fun i ->
             { i with
                 Namespace = ""
                 AllowNull = false
@@ -138,7 +138,7 @@ public partial class Id
 
 [<Test>]
 let ``casts`` () =
-    let idType = makeIdType<string> (fun i ->
+    let idType = makeIdFromType<string> (fun i ->
             { i with
                 CastFromUnderlying = Implicit
                 CastToUnderlying = Explicit
