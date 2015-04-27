@@ -37,9 +37,9 @@ let addUsings (usings : string array) (compilationUnit : CompilationUnitSyntax) 
 
     compilationUnit.AddUsings(directives)
 
-let addBaseTypes (types : TypeSyntax array) (classDeclaration : ClassDeclarationSyntax) =
+let inline addBaseTypes (types : TypeSyntax array) (input:^T) =
     let baseTypes = types |> Array.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax)
-    classDeclaration.AddBaseListTypes(baseTypes)
+    (^T : (member AddBaseListTypes : BaseTypeSyntax array -> ^T) (input, baseTypes))
 
 let inline addModifiers syntaxKinds (input:^T) =
     let tokens = syntaxKinds |> Array.map (fun k -> SyntaxFactory.Token(k))
@@ -151,6 +151,9 @@ let is checkedType expression = parenthesis(SyntaxFactory.BinaryExpression(Synta
 /// (left == right)
 let equals left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.EqualsExpression, left, right))
 
+/// (left != right)
+let notEquals left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.NotEqualsExpression, left, right))
+
 /// (left || right)
 let or' left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.LogicalOrExpression, left, right))
 
@@ -177,6 +180,9 @@ let throw expression = SyntaxFactory.ThrowStatement(expression)
 
 /// An empty file ("compilation unit")
 let emptyFile = SyntaxFactory.CompilationUnit()
+
+let class' (name:string) = SyntaxFactory.ClassDeclaration(name)
+let struct' (name:string) = SyntaxFactory.StructDeclaration(name)
 
 module WellKnownMethods =
     /// System.Object.Equals(objA, objB)
