@@ -257,7 +257,26 @@ module private Convertible =
     let private iconvertible = typeof<IConvertible>
     let private iconvertibleName = namesyntaxof<IConvertible>
 
-    let makeMember (m : MethodInfo) info =
+    let private makeNullCheck (m : MethodInfo) info =
+        if m.Name <> "ToType" then
+            // For each ToXXX method of the interface a static equivalent exists on System.Convert 
+            if'
+                (equals info.ThisValueMemberAccess Literal.Null)
+                (block
+                    [|
+                        ret (invocation (dottedMemberAccess' ["System"; "Convert"; m.Name]) [|Literal.Null|])
+                    |])
+        else
+            // Except for ToType where the equivalent is named ChangeType
+            let typeVariable = (identifier (m.GetParameters().[0].Name))
+            if'
+                (equals info.ThisValueMemberAccess Literal.Null)
+                (block
+                    [|
+                        ret (invocation (dottedMemberAccess' ["System"; "Convert"; "ChangeType"]) [|Literal.Null; typeVariable|])
+                    |])
+
+    let private makeMember (m : MethodInfo) info =
         // Initial declaration
         let returnType = NameSyntax.FromType m.ReturnType
         let declaration =
@@ -268,14 +287,17 @@ module private Convertible =
         let parameters = m.GetParameters() |> Array.map (fun p -> (p.Name, NameSyntax.FromType p.ParameterType))
         let declaration = parameters |> Seq.fold (fun decl (name, type') -> decl |> addParameter name type') declaration
 
-        // Add body
+        // Body
+        let bodyCheck = makeNullCheck m info
         let parametersForCall = parameters |> Array.map (fun (name, _) -> identifier name :> ExpressionSyntax)
-        let body = 
+        let bodyRet = 
             ret
                 (invocation
                     (info.ThisValueMemberAccess |> cast iconvertibleName |> memberAccess m.Name)
                     parametersForCall)
-        declaration |> addBodyStatement body
+
+        // Add body
+        declaration |> addBodyStatements [| bodyCheck; bodyRet|]
 
     let private addIConvertibleMethods info (classDeclaration : StructDeclarationSyntax) =
         iconvertible.GetMethods()
