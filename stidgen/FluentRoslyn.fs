@@ -150,8 +150,7 @@ let invocation (expression : ExpressionSyntax) (argumentExpressions : Expression
     let args = argumentExpressions |> Array.map (fun a -> SyntaxFactory.Argument(a))
     let argList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList<ArgumentSyntax>(args))
 
-    SyntaxFactory.InvocationExpression(expression)
-        .WithArgumentList(argList)
+    SyntaxFactory.InvocationExpression(expression).WithArgumentList(argList)
 
 let private variable' ``type`` (name:string) (value: ExpressionSyntax option) =
     let declarator = SyntaxFactory.VariableDeclarator(name)
@@ -198,6 +197,9 @@ let or' left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.Logi
 /// (left && right)
 let and' left right = parenthesis (SyntaxFactory.BinaryExpression(SyntaxKind.LogicalAndExpression, left, right))
 
+/// (cond ? whenTrue : whenFalse)
+let cond condition whenTrue whenFalse = parenthesis (SyntaxFactory.ConditionalExpression(condition, whenTrue, whenFalse))
+
 /// !(expression)
 let not' expression = SyntaxFactory.PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, parenthesis expression)
 
@@ -228,13 +230,20 @@ let struct' (name:string) = SyntaxFactory.StructDeclaration(name)
 
 module WellKnownMethods =
     /// System.Object.Equals(objA, objB)
-    let objectEquals objA objB = invocation (dottedMemberAccess' ["System"; "Object"; "Equals"]) [| objA; objB |]
+    let objectEquals objA objB =
+        let method' = TypeSyntax.Object |> dottedMemberAccess ["Equals"]
+        invocation method' [| objA; objB |]
 
     /// x.ToString()
     let toString x = invocation (memberAccess "ToString" x) Array.empty
 
     /// x.GetHashCode()
     let getHashCode x = invocation (memberAccess "GetHashCode" x) Array.empty
+
+    /// System.String.Intern(s)
+    let stringIntern s =
+        let method' = TypeSyntax.String |> dottedMemberAccess ["Intern"]
+        invocation method' [| s |]
 
 type NameSyntax with
     static member private Global = SyntaxFactory.IdentifierName(SyntaxFactory.Token(SyntaxKind.GlobalKeyword))

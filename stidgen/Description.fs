@@ -47,6 +47,9 @@ type IdType =
 
         /// Are the underlying and id types considered equals for Object.Equals, and equality operators
         EqualsUnderlying : bool
+
+        /// If the underlying type is string, are the values interned before being stored
+        InternString : bool
     }
 
 let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) = 
@@ -61,6 +64,7 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
             CastFromUnderlying = Explicit
             CastToUnderlying = Explicit
             EqualsUnderlying = false
+            InternString = true
         }
 
     idTypeBuilder idType

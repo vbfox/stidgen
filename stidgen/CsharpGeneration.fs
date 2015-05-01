@@ -45,11 +45,26 @@ let private makeValueProperty info =
     SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, info.PropertyName)
         |> addModifiers [|SyntaxKind.PublicKeyword|]
         |> addGetter body
+        
+/// Intern an expression of underlying type if needed && possible
+let private internIfNeeded arg info =
+    let underlyingIsString = typeof<string> = info.Id.UnderlyingType
+    if info.Id.InternString && underlyingIsString
+    then
+        let intern = WellKnownMethods.stringIntern arg
+        if info.AllowNull then
+            // String.Intern throw if it's argument is null so we must handle that
+            cond (equals arg Literal.Null) Literal.Null intern :> ExpressionSyntax
+        else
+            intern :> ExpressionSyntax
+    else
+        arg :> ExpressionSyntax
 
 let private makeCtor info =
     let argName = info.FieldName
+    let arg = identifier argName
     let checkForNull = throwIfArgumentNull argName
-    let assignProperty = setThisMember info.FieldName (SyntaxFactory.IdentifierName(argName))
+    let assignProperty = setThisMember info.FieldName (internIfNeeded arg info)
 
     SyntaxFactory.ConstructorDeclaration(info.Id.Name)
     |> addModifiers [|SyntaxKind.PublicKeyword|]
