@@ -73,6 +73,22 @@ let inline withBody (statements: StatementSyntax array) (input:^T) =
     let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
     (^T : (member WithBody : BlockSyntax -> ^T) (input, block))
 
+/// get;
+let addEmptyGetter (property:PropertyDeclarationSyntax) =
+    property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration) |> withSemicolon)
+
+/// set;
+let addEmptySetter (property:PropertyDeclarationSyntax) =
+    property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration) |> withSemicolon)
+
+/// get { body }
+let addGetter body (property:PropertyDeclarationSyntax) =
+    property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration, body))
+
+/// set { body }
+let addSetter body (property:PropertyDeclarationSyntax) =
+    property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration, body))
+
 /// this.memberName = value;
 let setThisMember (memberName:string) value =
     SyntaxFactory.ExpressionStatement(
@@ -135,6 +151,28 @@ let invocation (expression : ExpressionSyntax) (argumentExpressions : Expression
 
     SyntaxFactory.InvocationExpression(expression)
         .WithArgumentList(argList)
+
+
+let private variable' ``type`` (name:string) (value: ExpressionSyntax option) =
+    let declarator = SyntaxFactory.VariableDeclarator(name)
+    let declarator =
+        match value with
+        | Some(value) -> declarator.WithInitializer(SyntaxFactory.EqualsValueClause(value))
+        | None -> declarator
+    let declarators = SyntaxFactory.SingletonSeparatedList<VariableDeclaratorSyntax>(declarator)
+    SyntaxFactory.VariableDeclaration(``type``, declarators)
+
+/// Type name = value;
+let initializedVariable ``type`` name value = variable' ``type`` name (Some(value))
+
+/// Type name;
+let variable ``type`` name = variable' ``type`` name None
+
+/// Type name = value;
+let field ``type`` name = SyntaxFactory.FieldDeclaration(variable ``type`` name)
+
+/// Type name = value;
+let initializedField ``type`` name value = SyntaxFactory.FieldDeclaration(initializedVariable ``type`` name value)
 
 /// return expression;
 let ret expression = SyntaxFactory.ReturnStatement(expression)

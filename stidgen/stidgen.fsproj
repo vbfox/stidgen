@@ -61,6 +61,7 @@
     <None Include="App.config" />
     <Compile Include="Description.fs" />
     <Compile Include="FluentRoslyn.fs" />
+    <Compile Include="FirstChar.fs" />
     <Compile Include="CsharpGeneration.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

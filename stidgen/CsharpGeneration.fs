@@ -22,6 +22,8 @@ type private ParsedInfo =
         GeneratedTypeSyntax : TypeSyntax
         ThisValueMemberAccess : MemberAccessExpressionSyntax
         ValueAccess : ExpressionSyntax -> ExpressionSyntax
+        PropertyName : string
+        FieldName : string
     }
 
 let private value info x = x :> ExpressionSyntax |> info.ValueAccess
@@ -34,26 +36,18 @@ let private visibilityToKeyword = function
     | Private -> SyntaxKind.PrivateKeyword
     | Protected -> SyntaxKind.ProtectedKeyword
 
-let private makeValueProperty info =
-    SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, info.Id.ValueProperty)
-        .AddAccessorListAccessors(
-            SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                |> withSemicolon,
-            SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                |> addModifiers [|SyntaxKind.PrivateKeyword|]
-                |> withSemicolon
-            )
-        |> addModifiers [|SyntaxKind.PublicKeyword|]
+let private makeValueField info =
+    field info.UnderlyingTypeSyntax info.FieldName
+        |> addModifiers [|SyntaxKind.PrivateKeyword; SyntaxKind.ReadOnlyKeyword|]
 
-let private firstCharToLower (x:string) = 
-    if x.Length = 0 then
-        x
-    else
-        let first = System.Char.ToLowerInvariant(x.[0])
-        first.ToString() + x.Substring(1)
+let private makeValueProperty info =
+    let body = block [| ret info.ThisValueMemberAccess |]
+    SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, info.PropertyName)
+        |> addModifiers [|SyntaxKind.PublicKeyword|]
+        |> addGetter body
 
 let private makeCtor info =
-    let argName = firstCharToLower info.Id.ValueProperty
+    let argName = FirstChar.toLower info.Id.ValueProperty
 
     let checkForNull =
         if'
@@ -61,7 +55,7 @@ let private makeCtor info =
             (block [|throw (objectCreation typesyntaxof<ArgumentNullException> [|Literal.String argName|]) |])
 
     let assignProperty =
-        setThisMember info.Id.ValueProperty (SyntaxFactory.IdentifierName(argName))
+        setThisMember info.FieldName (SyntaxFactory.IdentifierName(argName))
 
     SyntaxFactory.ConstructorDeclaration(info.Id.Name)
     |> addModifiers [|SyntaxKind.PublicKeyword|]
@@ -84,7 +78,7 @@ let private makeToString info =
     let isString = info.Id.UnderlyingType = typedefof<string>
     let returnToString =
         if isString then
-            (ret (thisMemberAccess info.Id.ValueProperty))
+            (ret info.ThisValueMemberAccess)
         else
             info |> returnCallVoidMethodOnValue "ToString"
 
@@ -250,12 +244,12 @@ module private Casts =
     let addCastToUnderlyingType info generatedClass = 
         generatedClass
         |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax info.Id.CastToUnderlying
-            (fun n -> simpleMemberAccess n info.Id.ValueProperty)
+            (fun n -> value info (identifier n))
 
     let addCastFromUnderlyingType info generatedClass = 
         generatedClass
         |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax info.Id.CastFromUnderlying
-            (fun n -> objectCreation info.GeneratedTypeSyntax [|SyntaxFactory.IdentifierName(n)|])
+            (fun n -> objectCreation info.GeneratedTypeSyntax [|identifier n|])
 
 module private Convertible =
     open System.Reflection
@@ -305,6 +299,7 @@ let private makeClass idType info =
         |> addBaseTypes [| Equality.iequatableOf info.GeneratedTypeSyntax |]
         |?> (info.Id.EqualsUnderlying, addBaseTypes [| Equality.iequatableOf info.UnderlyingTypeSyntax |])
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
+        |> addMember' makeValueField
         |> addMember' makeValueProperty
         |> addMember' makeCtor
         |> addMember' makeToString
@@ -318,20 +313,27 @@ let private makeClass idType info =
         |> Casts.addCastToUnderlyingType info
         |> Convertible.addIConvertibleMembers info
 
-let makeRootNode idType = 
+let private makeInfo idType =
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
 
-    let info =
-        {
-            Id = idType
-            AllowNull = idType.AllowNull && idType.UnderlyingType.IsClass
-            NamespaceProvided = namespaceProvided
-            UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.UnderlyingType.FullName)
-            GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
-            ThisValueMemberAccess = thisMemberAccess idType.ValueProperty
-            ValueAccess = (fun expr -> expr |> dottedMemberAccess [idType.ValueProperty])
-        }
+    let propertyName = FirstChar.toUpper idType.ValueProperty
+    let fieldName = FirstChar.toLower idType.ValueProperty
 
+    {
+        Id = idType
+        AllowNull = idType.AllowNull && idType.UnderlyingType.IsClass
+        NamespaceProvided = namespaceProvided
+        UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.UnderlyingType.FullName)
+        GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
+        ThisValueMemberAccess = thisMemberAccess fieldName
+        ValueAccess = (fun expr -> expr |> dottedMemberAccess [fieldName])
+        PropertyName = propertyName
+        FieldName = fieldName
+    }
+
+
+let makeRootNode idType = 
+    let info = makeInfo idType
     let generatedClass = makeClass idType info
 
     let rootMember =
