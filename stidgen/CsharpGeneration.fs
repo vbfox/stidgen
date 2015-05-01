@@ -24,6 +24,8 @@ type private ParsedInfo =
         ValueAccess : ExpressionSyntax -> ExpressionSyntax
     }
 
+let private value info x = x :> ExpressionSyntax |> info.ValueAccess
+
 let private (|?>) x (c, f) = if c then f x else x
 let private (|??>) x (c, f, g) = if c then f x else g x
 
@@ -136,7 +138,8 @@ module private Equality =
         let parameterA = identifier "a"
         let parameterB = identifier "b"
 
-        let value x = x :> ExpressionSyntax |> info.ValueAccess
+        let value = value info
+
         let body = ret (underlyingEquals info (value parameterA) (value parameterB) true)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
@@ -213,7 +216,7 @@ module private Equality =
         let left = identifier "left"
         let right = identifier "right"
 
-        let value x = x :> ExpressionSyntax |> info.ValueAccess
+        let value = value info
         let body = ret (underlyingEquals info (value left) (value right) eq)
 
         let operatorToken = if eq then SyntaxKind.EqualsEqualsToken else SyntaxKind.ExclamationEqualsToken
