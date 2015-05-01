@@ -89,20 +89,6 @@ let addGetter body (property:PropertyDeclarationSyntax) =
 let addSetter body (property:PropertyDeclarationSyntax) =
     property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration, body))
 
-/// this.memberName = value;
-let setThisMember (memberName:string) value =
-    SyntaxFactory.ExpressionStatement(
-        SyntaxFactory.AssignmentExpression(
-            SyntaxKind.SimpleAssignmentExpression,
-            SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                SyntaxFactory.ThisExpression(),
-                SyntaxFactory.IdentifierName(memberName)
-            ),
-            value
-        )
-    )
-
 let identifier (identifierName : string) = SyntaxFactory.IdentifierName(identifierName)
 
 /// onExpr.name
@@ -132,9 +118,24 @@ let dottedMemberAccess' identifiers =
 let simpleMemberAccess (id:string) (``member``:string) =
     (identifier id) |> memberAccess  ``member``
 
+/// this
+let this = SyntaxFactory.ThisExpression()
+
 /// this.member
-let thisMemberAccess (``member``:string) =
-    SyntaxFactory.ThisExpression() |> memberAccess ``member``
+let thisMemberAccess (memberName:string) = this |> memberAccess memberName
+
+/// left = right;
+let set left right = 
+    SyntaxFactory.ExpressionStatement(
+        SyntaxFactory.AssignmentExpression(
+            SyntaxKind.SimpleAssignmentExpression,
+            left,
+            right
+        )
+    )
+
+/// this.memberName = value;
+let setThisMember (memberName:string) value = set (thisMemberAccess memberName) value
 
 /// new createdType(argumentExpressions)
 let objectCreation createdType argumentExpressions =
@@ -151,7 +152,6 @@ let invocation (expression : ExpressionSyntax) (argumentExpressions : Expression
 
     SyntaxFactory.InvocationExpression(expression)
         .WithArgumentList(argList)
-
 
 let private variable' ``type`` (name:string) (value: ExpressionSyntax option) =
     let declarator = SyntaxFactory.VariableDeclarator(name)
