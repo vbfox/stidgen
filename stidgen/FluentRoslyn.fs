@@ -216,6 +216,10 @@ let block (statements : StatementSyntax array) = SyntaxFactory.Block(statements)
 /// throw expression;
 let throw expression = SyntaxFactory.ThrowStatement(expression)
 
+/// throw exceptionType(args);
+let throwException exceptionType args =
+    throw (objectCreation exceptionType args)
+
 /// An empty file ("compilation unit")
 let emptyFile = SyntaxFactory.CompilationUnit()
 
@@ -271,3 +275,9 @@ let namesyntaxof<'t> = NameSyntax.FromType(typeof<'t>)
 
 /// typeof('t)
 let typesyntaxof<'t> = NameSyntax.FromType(typeof<'t>) :> TypeSyntax
+
+/// if (argName == null) { throw new ArgumentNullException("argName"); }
+let throwIfArgumentNull argName =
+    if'
+        (equals (identifier argName) (Literal.Null))
+        (block [| throwException typesyntaxof<System.ArgumentNullException> [|Literal.String argName|] |])

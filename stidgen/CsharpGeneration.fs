@@ -47,15 +47,9 @@ let private makeValueProperty info =
         |> addGetter body
 
 let private makeCtor info =
-    let argName = FirstChar.toLower info.Id.ValueProperty
-
-    let checkForNull =
-        if'
-            (equals (identifier argName) (Literal.Null))
-            (block [|throw (objectCreation typesyntaxof<ArgumentNullException> [|Literal.String argName|]) |])
-
-    let assignProperty =
-        setThisMember info.FieldName (SyntaxFactory.IdentifierName(argName))
+    let argName = info.FieldName
+    let checkForNull = throwIfArgumentNull argName
+    let assignProperty = setThisMember info.FieldName (SyntaxFactory.IdentifierName(argName))
 
     SyntaxFactory.ConstructorDeclaration(info.Id.Name)
     |> addModifiers [|SyntaxKind.PublicKeyword|]
@@ -258,16 +252,9 @@ module private Convertible =
     let private iconvertibleName = namesyntaxof<IConvertible>
 
     let private makeNullCheck (m : MethodInfo) info =
-        if m.Name <> "ToType" then
-            // For each ToXXX method of the interface a static equivalent exists on System.Convert 
-            if'
-                (equals info.ThisValueMemberAccess Literal.Null)
-                (block
-                    [|
-                        ret (invocation (dottedMemberAccess' ["System"; "Convert"; m.Name]) [|Literal.Null|])
-                    |])
-        else
-            // Except for ToType where the equivalent is named ChangeType
+        match m.Name with
+        | "ToType" -> 
+            // ToType equivalent on System.Convert is named ChangeType
             let typeVariable = (identifier (m.GetParameters().[0].Name))
             if'
                 (equals info.ThisValueMemberAccess Literal.Null)
@@ -275,6 +262,19 @@ module private Convertible =
                     [|
                         ret (invocation (dottedMemberAccess' ["System"; "Convert"; "ChangeType"]) [|Literal.Null; typeVariable|])
                     |])
+        | "ToChar" -> 
+            // To char always throw for null, so no need to call the static version
+            let argName = m.GetParameters().[0].Name
+            throwIfArgumentNull argName
+        | _ ->
+            // For other ToXXX methods call the static equivalent on System.Convert
+            if'
+                (equals info.ThisValueMemberAccess Literal.Null)
+                (block
+                    [|
+                        ret (invocation (dottedMemberAccess' ["System"; "Convert"; m.Name]) [|Literal.Null|])
+                    |])
+
 
     let private makeMember (m : MethodInfo) info =
         // Initial declaration
