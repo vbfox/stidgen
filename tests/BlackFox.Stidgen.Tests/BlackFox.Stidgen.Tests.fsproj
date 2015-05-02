@@ -8,7 +8,7 @@
     <ProjectGuid>92ae98c3-4735-4e39-a0f7-58a8fd7c7d5b</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>UnitTests</RootNamespace>
-    <AssemblyName>UnitTests</AssemblyName>
+    <AssemblyName>BlackFox.Stidgen.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <Name>UnitTests</Name>
   </PropertyGroup>
