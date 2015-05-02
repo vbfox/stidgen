@@ -8,18 +8,22 @@ let binDir = Path.Combine(__SOURCE_DIRECTORY__, "bin")
 let buildDir = Path.Combine(binDir, "build")
 let testsDir = Path.Combine(binDir, "tests")
 
-Target "BuildApp" (fun _ ->
-    CreateDir buildDir
-    !! "stidgen/stidgen.fsproj"
-      |> MSBuildRelease buildDir "Build"
-      |> Log "Build Output: "
+let solutionFile  = "stidgen.sln"
+
+// Copies binaries from default VS location to exepcted bin folder
+// But keeps a subdirectory structure for each project in the 
+// src folder to support multiple project outputs
+Target "CopyBinaries" (fun _ ->
+    !! "src/**/*.??proj"
+    |>  Seq.map (fun f -> ((System.IO.Path.GetDirectoryName f) @@ "bin/Release", binDir @@ (System.IO.Path.GetFileNameWithoutExtension f)))
+    |>  Seq.iter (fun (fromDir, toDir) -> CopyDir toDir fromDir (fun _ -> true))
 )
 
-Target "BuildTests" (fun _ ->
-    CreateDir testsDir
-    !! "UnitTests/UnitTests.fsproj"
-      |> MSBuildRelease testsDir "Build"
-      |> Log "Tests Build Output: "
+Target "Build" (fun _ ->
+    CreateDir buildDir
+    !! solutionFile
+    |> MSBuildRelease "" "Rebuild"
+    |> ignore
 )
 
 Target "RunTests" (fun _ ->
@@ -44,8 +48,8 @@ Target "Paket" (fun _ ->
 )
 
 "Clean"
-  ==> "BuildApp"
-  ==> "BuildTests"
+  ==> "Build"
+  ==> "CopyBinaries"
   ==> "RunTests"
   ==> "Default"
 
