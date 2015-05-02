@@ -1,12 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22609.0
+VisualStudioVersion = 14.0.22823.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "stidgen", "stidgen\stidgen.fsproj", "{0A78F77F-6316-406D-9A1E-DA3DFE87443B}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "UnitTests", "UnitTests\UnitTests.fsproj", "{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8D5C639B-3DFC-4CA4-8C3B-5CC939D3D8E8}"
 	ProjectSection(SolutionItems) = preProject
 		build.cmd = build.cmd
@@ -14,6 +10,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		paket.dependencies = paket.dependencies
 		Readme.md = Readme.md
 	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BlackFox.Stidgen", "src\BlackFox.Stidgen\BlackFox.Stidgen.fsproj", "{0A78F77F-6316-406D-9A1E-DA3DFE87443B}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BlackFox.Stidgen.Tests", "tests\BlackFox.Stidgen.Tests\BlackFox.Stidgen.Tests.fsproj", "{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
