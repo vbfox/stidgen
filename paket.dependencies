@@ -1,6 +1,7 @@
 source https://nuget.org/api/v2
 
 // Code
+nuget FSharp.Core
 nuget Microsoft.CodeAnalysis prerelease
 
 // Unit tests
