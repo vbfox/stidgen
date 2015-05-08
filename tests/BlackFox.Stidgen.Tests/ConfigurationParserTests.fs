@@ -131,3 +131,11 @@ let ``Property CastFromUnderlying Explicit`` () =
 [<Test>]
 let ``Property CastFromUnderlying Implicit`` () =
     propertyTest "CastFromUnderlying" "Implicit" Implicit (fun t -> t.CastFromUnderlying)
+
+[<Test>]
+let ``Property FileName with value`` () =
+    propertyTest "FileName" "My File.cs" (Some("My File.cs")) (fun t -> t.FileName)
+
+[<Test>]
+let ``Property FileName without value`` () =
+    propertyTest "FileName" "" Option.None (fun t -> t.FileName)

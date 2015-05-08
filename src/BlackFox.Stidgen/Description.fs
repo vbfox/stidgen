@@ -49,6 +49,9 @@ type IdType =
 
         /// If the underlying type is string, are the values interned before being stored
         InternString : bool
+
+        /// Name of the generated file, if not specified the type name will be used
+        FileName : string option
     }
 
 let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) = 
@@ -64,6 +67,7 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
             CastToUnderlying = Explicit
             EqualsUnderlying = false
             InternString = true
+            FileName = Option.None
         }
 
     idTypeBuilder idType

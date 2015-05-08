@@ -79,6 +79,12 @@ module private LineParser =
         | "implicit" -> Cast.Implicit
         | _ -> failwith (sprintf "Unknown cast type: '%s'" text)
 
+    let parseOptionalString (text:string) =
+        if System.String.IsNullOrWhiteSpace(text) then
+            Option.None
+        else
+            Some(text)
+
     let addProperty' (name:string) (value:string) (idType:IdType) =
         match name with
         | "ValueProperty" -> { idType with ValueProperty = value }
@@ -87,6 +93,7 @@ module private LineParser =
         | "EqualsUnderlying" -> { idType with EqualsUnderlying = bool.Parse(value) }
         | "CastToUnderlying" -> { idType with CastToUnderlying = parseCast(value) }
         | "CastFromUnderlying" -> { idType with CastFromUnderlying = parseCast(value) }
+        | "FileName" -> { idType with FileName = parseOptionalString(value) }
         | _ -> failwith(sprintf "Property '%s' isn't supported" name)
 
     let addProperty (content:LineContent) (idType:IdType) =
