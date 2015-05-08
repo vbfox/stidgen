@@ -33,8 +33,7 @@ let private (|??>) x (c, f, g) = if c then f x else g x
 
 let private visibilityToKeyword = function
     | Public -> SyntaxKind.PublicKeyword
-    | Private -> SyntaxKind.PrivateKeyword
-    | Protected -> SyntaxKind.ProtectedKeyword
+    | Internal -> SyntaxKind.InternalKeyword
 
 let private makeValueField info =
     field info.UnderlyingTypeSyntax info.FieldName

@@ -2,3 +2,4 @@ FSharp.Core
 Microsoft.CodeAnalysis
 NUnit
 NFluent
+FsUnit

@@ -2,10 +2,9 @@
 
 open System
 
-type Visibility =
-    | Private
+type ClassVisibility =
     | Public
-    | Protected
+    | Internal
 
 /// How should a cast be generated
 type Cast =
@@ -34,7 +33,7 @@ type IdType =
         ValueProperty : string
 
         /// Visibility of the id type
-        Visibility : Visibility
+        Visibility : ClassVisibility
 
         /// If the underlying type is nullable, is null a valid value for the id type
         AllowNull : bool
