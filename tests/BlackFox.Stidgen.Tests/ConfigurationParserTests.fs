@@ -7,7 +7,7 @@ open NUnit.Framework
 
 [<Test>]
 let ``Simple type`` () = 
-    let types = ["public SomeName.Space.TypeName<string>"] |> loadFromLines
+    let types = (["public SomeName.Space.TypeName<string>"] |> loadFromLines).Types
     types.Length |> should equal 1
     let idType = types.Head
     idType.UnderlyingType |> should equal typeof<string>
@@ -18,11 +18,11 @@ let ``Simple type`` () =
 [<Test>]
 let ``Multiple types`` () = 
     let types =
-        [
+        ([
             "public SomeName.Space.AName<int>"
             "public AGuid<Guid>"
             "public SomeName.Space.TypeName<string>"
-        ] |> loadFromLines |> List.toArray
+        ] |> loadFromLines).Types |> List.toArray
     types.Length |> should equal 3
     types.[0].Name |> should equal "AName"
     types.[1].Name |> should equal "AGuid"
@@ -31,30 +31,30 @@ let ``Multiple types`` () =
 [<Test>]
 let ``Can load text with comments`` () = 
     let types =
-        [
+        ([
             "// This is a comment"
             ""
             "public SomeName.Space.TypeName<string>"
-        ] |> loadFromLines
+        ] |> loadFromLines).Types
     types.Length |> should equal 1
 
 [<Test>]
 let ``No text`` () = 
-    let types = [] |> loadFromLines
+    let types = ([] |> loadFromLines).Types
     types.Length |> should equal 0
 
 [<Test>]
 let ``Comments only`` () = 
     let types =
-        [
+        ([
             "// This is a comment"
             ""
-        ] |> loadFromLines
+        ] |> loadFromLines).Types
     types.Length |> should equal 0
 
 [<Test>]
 let ``Type without namespace`` () = 
-    let t = ["internal SomeTypeName<int>"] |> loadFromLines |> List.head
+    let t = (["internal SomeTypeName<int>"] |> loadFromLines).Types |> List.head
     t.Namespace |> should equal ""
     
 [<TestCase("bool", "System.Boolean")>]
@@ -76,25 +76,25 @@ let ``Type without namespace`` () =
 [<TestCase("Guid", "System.Guid")>]
 let ``Underlying of type`` name expectedType =
     let s = sprintf "internal SomeTypeName<%s>" name
-    let t = [s] |> loadFromLines |> List.head
+    let t = ([s] |> loadFromLines).Types |> List.head
     t.UnderlyingType |> should equal (System.Type.GetType(expectedType))
 
 [<Test>]
 let ``Internal visibility`` () = 
-    let t = ["internal SomeTypeName<int>"] |> loadFromLines |> List.head
+    let t = (["internal SomeTypeName<int>"] |> loadFromLines).Types |> List.head
     t.Visibility |> should equal ClassVisibility.Internal
 
 [<Test>]
 let ``Public visibility`` () = 
-    let t = ["public SomeTypeName<int>"] |> loadFromLines |> List.head
+    let t = (["public SomeTypeName<int>"] |> loadFromLines).Types |> List.head
     t.Visibility |> should equal ClassVisibility.Public
 
 let propertyTest propName testValue (expectedValue:'a) (extractValueFromIdType : IdType -> 'a) =
     let t =
-        [
+        ([
             "public SomeTypeName<int>"
             (sprintf "    %s: %s" propName testValue)
-        ] |> loadFromLines |> List.head
+        ] |> loadFromLines).Types |> List.head
     t |> extractValueFromIdType |> should equal expectedValue
 
 [<Test>]

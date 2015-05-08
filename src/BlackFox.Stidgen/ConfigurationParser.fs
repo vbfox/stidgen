@@ -65,7 +65,11 @@ module private TextParser =
         |> filterOut isComment
         |> Seq.map parseLine
 
-type Configuration = IdType list
+type Configuration =
+    {
+        Path : string option
+        Types : IdType list
+    }
 
 module private LineParser =
     let parseCast (text:string) =
@@ -134,7 +138,7 @@ module private LineParser =
             )
         | _ -> failwith "Not a type definition"
 
-    let rec linesToConfiguration' (currentType:IdType option) (remainingLines : Line list) =
+    let rec linesToIdTypes (currentType:IdType option) (remainingLines : Line list) =
         match remainingLines with
         | line :: rest ->
             match line.Content with
@@ -142,13 +146,13 @@ module private LineParser =
                 match currentType with
                 | Some(idType) -> 
                     let idType = idType |> addProperty line.Content
-                    linesToConfiguration' (Some(idType)) rest
+                    linesToIdTypes (Some(idType)) rest
                 | Option.None -> failwith ("Found a property line before founding any type: " + line.Text)
             | TypeDefinition(_,_,_,_) ->
                 let newType = typeDefinitionToType line.Content
                 match currentType with
-                | Some(idType) -> idType :: linesToConfiguration' (Some(newType)) rest
-                | Option.None -> linesToConfiguration' (Some(newType)) rest
+                | Some(idType) -> idType :: linesToIdTypes (Some(newType)) rest
+                | Option.None -> linesToIdTypes (Some(newType)) rest
         | [] -> 
             match currentType with
             | Some(idType) -> [idType]
@@ -156,7 +160,8 @@ module private LineParser =
 
     let linesToConfiguration (lines:Line seq) : Configuration =
         let lines = lines |> List.ofSeq
-        linesToConfiguration' Option.None lines
+        let types = linesToIdTypes Option.None lines
+        { Path = Option.None; Types = types}
 
 let loadFromLines (lines:string seq) =
     lines
@@ -180,4 +185,5 @@ let loadFromStream (stream:Stream) =
 
 let loadFromFile (file:FileInfo) =
     use reader = new FileStream(file.FullName, FileMode.Open)
-    loadFromStream reader
+    let configuration = loadFromStream reader
+    { configuration with Path = Some(file.FullName) }
