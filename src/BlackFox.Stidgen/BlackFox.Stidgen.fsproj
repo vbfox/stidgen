@@ -26,7 +26,7 @@
     <Prefer32Bit>true</Prefer32Bit>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
-    <StartArguments>"c:\users\vbfox\documents\visual studio 14\Projects\ConsoleApplication8\ConsoleApplication8\TestId.cs"</StartArguments>
+    <StartArguments>"C:\Users\vbfox\Documents\Visual Studio 14\Projects\ConsoleApplication8\ConsoleApplication8\TestIds.stidgen"</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -63,6 +63,7 @@
     <Compile Include="FluentRoslyn.fs" />
     <Compile Include="FirstChar.fs" />
     <Compile Include="CsharpGeneration.fs" />
+    <Compile Include="FileGeneration.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

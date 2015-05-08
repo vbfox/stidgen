@@ -1,33 +1,14 @@
 ﻿module BlackFox.Stidgen.Program
 
-open BlackFox.Stidgen.Description
-open BlackFox.Stidgen.CsharpGeneration
-open System.IO
-
-let getIdType () =
-    makeIdFromType<string> (fun i ->
-            { i with
-                Name = "TestId"
-                Namespace = "BlackFox.TestIdGeneration"
-                EqualsUnderlying = true
-            }
-        )
-
-let writeToFile fileName idType =
-    let text = idTypeToString idType
-    File.WriteAllText(fileName, text)
-
-let printOnConsole idType = 
-    let text = idTypeToString idType
-    printf "%s" text
-    System.Console.ReadLine() |> ignore
+let printUsage () =
+    printf "Usage:"
+    printf "    stidgen fileName"
 
 [<EntryPoint>]
 let main argv = 
-    let idType = getIdType ()
-    if argv.Length > 0 then
-        writeToFile argv.[0] idType
+    if argv.Length = 1 then
+        FileGeneration.generateToFiles argv.[0]
     else
-        printOnConsole idType
+        printUsage ()
 
     0
