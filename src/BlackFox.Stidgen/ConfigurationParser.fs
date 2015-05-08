@@ -68,8 +68,28 @@ module private TextParser =
 type Configuration = IdType list
 
 module private LineParser =
+    let parseCast (text:string) =
+        let lowerCasedText = text.ToLower()
+        match lowerCasedText with
+        | "explicit" -> Cast.Explicit
+        | "implicit" -> Cast.Implicit
+        | _ -> failwith (sprintf "Unknown cast type: '%s'" text)
+
+    let addProperty' (name:string) (value:string) (idType:IdType) =
+        match name with
+        | "ValueProperty" -> { idType with ValueProperty = value }
+        | "AllowNull" -> { idType with AllowNull = bool.Parse(value) }
+        | "InternString" -> { idType with InternString = bool.Parse(value) }
+        | "EqualsUnderlying" -> { idType with EqualsUnderlying = bool.Parse(value) }
+        | "CastToUnderlying" -> { idType with CastToUnderlying = parseCast(value) }
+        | "CastFromUnderlying" -> { idType with CastFromUnderlying = parseCast(value) }
+        | _ -> failwith(sprintf "Property '%s' isn't supported" name)
+
     let addProperty (content:LineContent) (idType:IdType) =
-        idType
+        match content with
+        | Property(name, value) ->
+            idType |> addProperty' (name.Trim()) (value.Trim())
+        | _ -> failwith "Not a property definition"
 
     let parseUnderlyingType = function
         | "bool" -> typeof<bool>
@@ -94,12 +114,12 @@ module private LineParser =
             if type' <> null then
                 type'
             else
-                failwith (sprintf "Type %s not found." s)
+                failwith (sprintf "Type '%s' not found." s)
 
     let parseVisibility = function
         | "public" -> Public
         | "internal" -> Internal
-        | s -> failwith (sprintf "Visibility can't be parsed: %s" s)
+        | s -> failwith (sprintf "Visibility can't be parsed: '%s'" s)
 
     let typeDefinitionToType (content:LineContent) =
         match content with

@@ -88,3 +88,46 @@ let ``Internal visibility`` () =
 let ``Public visibility`` () = 
     let t = ["public SomeTypeName<int>"] |> loadFromLines |> List.head
     t.Visibility |> should equal ClassVisibility.Public
+
+let propertyTest propName testValue (expectedValue:'a) (extractValueFromIdType : IdType -> 'a) =
+    let t =
+        [
+            "public SomeTypeName<int>"
+            (sprintf "    %s: %s" propName testValue)
+        ] |> loadFromLines |> List.head
+    t |> extractValueFromIdType |> should equal expectedValue
+
+[<Test>]
+let ``Property ValueProperty`` () =
+    propertyTest "ValueProperty" "MyValue" "MyValue" (fun t -> t.ValueProperty)
+
+[<TestCase("true", true)>]
+[<TestCase("false", false)>]
+let ``Property AllowNull`` text (expected:bool) =
+    propertyTest "AllowNull" text expected (fun t -> t.AllowNull)
+
+[<TestCase("true", true)>]
+[<TestCase("false", false)>]
+let ``Property InternString`` text (expected:bool) =
+    propertyTest "InternString" text expected (fun t -> t.InternString)
+
+[<TestCase("true", true)>]
+[<TestCase("false", false)>]
+let ``Property EqualsUnderlying`` text (expected:bool) =
+    propertyTest "EqualsUnderlying" text expected (fun t -> t.EqualsUnderlying)
+
+[<Test>]
+let ``Property CastToUnderlying Explicit`` () =
+    propertyTest "CastToUnderlying" "Explicit" Explicit (fun t -> t.CastToUnderlying)
+
+[<Test>]
+let ``Property CastToUnderlying Implicit`` () =
+    propertyTest "CastToUnderlying" "Implicit" Implicit (fun t -> t.CastToUnderlying)
+
+[<Test>]
+let ``Property CastFromUnderlying Explicit`` () =
+    propertyTest "CastFromUnderlying" "Explicit" Explicit (fun t -> t.CastFromUnderlying)
+
+[<Test>]
+let ``Property CastFromUnderlying Implicit`` () =
+    propertyTest "CastFromUnderlying" "Implicit" Implicit (fun t -> t.CastFromUnderlying)
