@@ -40,6 +40,59 @@ Target "Clean" (fun _ ->
     CleanDir binDir
 )
 
+let escapeArg argText =
+    let empty = System.String.IsNullOrEmpty(argText)
+    let notInteresting = argText.IndexOfAny([|' ';'\t';'\n';'\v';'"'|]) = -1
+    if empty || notInteresting then
+        argText
+    else
+        let chars = seq {
+            yield '"'
+            let numberBackslashes = ref 0
+            for c in argText do
+                match c with
+                | '\\' -> numberBackslashes := !numberBackslashes + 1
+                | '"' ->
+                    for i=1 to !numberBackslashes * 2 + 1 do yield '\\'
+                    numberBackslashes := 0
+                    yield '"'
+                | c ->
+                    for i=1 to !numberBackslashes do yield '\\'
+                    numberBackslashes := 0
+                    yield c
+
+            for i=1 to !numberBackslashes * 2 do yield '\\'
+            yield '"'
+        }
+        new System.String(chars |> Array.ofSeq)
+
+let escapeArgs args =
+    let escaped = args |> List.map escapeArg |> Seq.ofList
+    System.String.Join(" ", escaped)
+
+Target "Merge" (fun _ -> 
+    let exeBinDir = binDir @@ "BlackFox.Stidgen"
+    let mainExe = exeBinDir @@ "stidgen.exe"
+    let ilRepack = Path.Combine(__SOURCE_DIRECTORY__, "packages", "ILRepack", "tools", "ILRepack.exe")
+    let dlls = (!! (exeBinDir + "/*.dll")) :> string seq |> List.ofSeq
+    let args = [
+        "/out:" + (exeBinDir @@ "stidgen.pack.exe")
+        mainExe
+    ]
+    (*
+    let args = List.concat [args;dlls]
+    printfn "%s" (escapeArgs args)
+    directExec (fun info -> 
+        info.FileName <- ilRepack
+        info.Arguments <- escapeArgs args
+        ) |> ignore
+        *)
+    let ilMerge = Path.Combine(__SOURCE_DIRECTORY__, "packages", "ilmerge", "tools", "ILMerge.exe")
+    ILMergeHelper.ILMerge (fun p -> 
+        { p with Libraries = [exeBinDir@@"FSharp.Core.dll"]; ToolPath = ilMerge; TargetKind = TargetKind.Exe}
+        ) (exeBinDir @@ "stidgen.ilmerge.exe") mainExe
+)
+
 Target "Default" (fun _ ->
     trace "Default target executed"
 )

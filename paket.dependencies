@@ -12,3 +12,5 @@ nuget FsUnit
 // Build infrastructure
 nuget FAKE
 nuget NUnit.Runners
+nuget ILRepack
+nuget ilmerge
