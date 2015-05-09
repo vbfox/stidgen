@@ -179,10 +179,10 @@ open System.IO
 
 let loadFromTextReader (reader:TextReader) = 
     let lines = seq {
-        let mutable line = reader.ReadLine()
-        while line <> null do
-            yield line
-            line <- reader.ReadLine()
+        let line = ref (reader.ReadLine())
+        while !line <> null do
+            yield !line
+            line := reader.ReadLine()
     }
     loadFromLines lines
 
