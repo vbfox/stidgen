@@ -7,8 +7,13 @@ let printUsage () =
 [<EntryPoint>]
 let main argv = 
     if argv.Length = 1 then
-        FileGeneration.generateToFiles argv.[0]
+        match FileGeneration.generateToFiles argv.[0] with
+        | [] -> 0
+        | errors ->
+            for error in errors do
+                printfn "%O" error
+                printfn "\tContent: %s" error.Line.Text
+            -1
     else
         printUsage ()
-
-    0
+        0

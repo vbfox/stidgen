@@ -29,8 +29,11 @@ let private generateToFile configurationPath idType =
 let generateToFiles configurationPath =
     let configurationInfo = new FileInfo(configurationPath)
     let configuration = ConfigurationParser.loadFromFile configurationInfo
+    
     match configuration.Path with
     | Some(path) -> 
         for idType in configuration.Types do
             idType |> generateToFile path
-    | _ -> failwith "Unexpected"
+    | _ -> failwith "Unexpected"    
+    
+    configuration.Errors

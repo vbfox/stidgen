@@ -139,3 +139,91 @@ let ``Property FileName with value`` () =
 [<Test>]
 let ``Property FileName without value`` () =
     propertyTest "FileName" "" Option.None (fun t -> t.FileName)
+
+let expectError line textContent conf =
+    conf.Errors
+        |> Seq.exists (fun error -> error.Line.Number = line && error.ErrorText.Contains(textContent))
+        |> should equal true
+
+let expectSingleError line textContent conf =
+    expectError line textContent conf
+    conf.Errors.Length |> should equal 1
+
+[<Test>]
+let ``Invalid type no space`` () =
+    let conf =
+        ([
+            "HelloWorld"
+        ] |> loadFromLines)
+    conf |> expectSingleError 1 "Invalid type definition, should contain one space"
+
+[<Test>]
+let ``Invalid type too much space`` () =
+    let conf =
+        ([
+            "Hello World 42"
+        ] |> loadFromLines)
+    conf |> expectSingleError 1 "Invalid type definition, should contain one space"
+
+[<Test>]
+let ``Invalid type and valid types`` () =
+    let conf =
+        ([
+            "public SomeName.Space.AName<int>"
+            "HelloWorld"
+            "public SomeName.Space.TypeName<string>"
+            "public SomeName.Space.OtherTypeName<string>"
+        ] |> loadFromLines)
+    conf |> expectSingleError 2 "Invalid type definition, should contain one space"
+
+    conf.Types.Length |> should equal 3
+
+[<Test>]
+let ``Invalid type no underlying`` () =
+    let conf =
+        ([
+            "public HelloWorld"
+        ] |> loadFromLines)
+    conf |> expectSingleError 1 "Invalid type definition, should contain an underlying type between <>"
+
+[<Test>]
+let ``Invalid type no underlying end`` () =
+    let conf =
+        ([
+            "public HelloWorld<int"
+        ] |> loadFromLines)
+    conf |> expectSingleError 1 "Invalid type definition, should end with > like"
+
+[<Test>]
+let ``Invalid type invalid underlying type`` () =
+    let conf =
+        ([
+            "public HelloWorld<System.DoNotExists>"
+        ] |> loadFromLines)
+    conf |> expectSingleError 1 "Type 'System.DoNotExists' not found."
+
+[<Test>]
+let ``Property with invalid delimiter`` () =
+    let conf =
+        ([
+            "public TestId<int>"
+            "    Test=Value"
+        ] |> loadFromLines)
+    conf |> expectSingleError 2 "Invalid property definition, should be 'name:value'"
+
+[<Test>]
+let ``Property without type`` () =
+    let conf =
+        ([
+            "    AllowNull:true"
+        ] |> loadFromLines)
+    conf |> expectSingleError 1 "Property line associated with no valid type"
+
+[<Test>]
+let ``Property with invalid type`` () =
+    let conf =
+        ([
+            "42"
+            "    AllowNull:true"
+        ] |> loadFromLines)
+    conf |> expectError 2 "Property line associated with no valid type"
