@@ -58,8 +58,9 @@ type ResultBuilder () =
                 enumerator.MoveNext,
                 body enumerator.Current)
         finally
-            if not <| isNull enumerator then
-                enumerator.Dispose ()
+            match enumerator with 
+                | null -> () 
+                | _ -> enumerator.Dispose()
 
 [<AutoOpen>]
 module WorkflowBuilders =
