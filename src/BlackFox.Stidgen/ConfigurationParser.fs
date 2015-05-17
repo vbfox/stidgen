@@ -2,6 +2,7 @@
     
 open BlackFox.Stidgen.Description
 open ExtCore.Control
+open BlackFox.Stidgen.Control
 
 type LineContent =
     | TypeDefinition of visibility:string * namespace':string * name:string * underlyingType:string
@@ -37,9 +38,9 @@ module private TextParser =
 
     let filterOut cond = Seq.filter (fun (x:Line) -> not (cond x.Text))
 
-    let parseTypeDefinition (line:string)  : Choice<LineContent, ErrorText> =
+    let parseTypeDefinition (line:string) =
         let fail details =
-            Choice2Of2 (sprintf "Invalid type definition, should %s like 'public MyType<int>'" details)
+            Failure (sprintf "Invalid type definition, should %s like 'public MyType<int>'" details)
 
         match line.Split(' ') with
         | [| visibility; rest |] -> 
@@ -59,24 +60,24 @@ module private TextParser =
                             ""
                     let name = fullName.Substring(lastDot+1)
                 
-                    Choice1Of2 (TypeDefinition(visibility, namespace', name, underlyingType))
+                    Success (TypeDefinition(visibility, namespace', name, underlyingType))
 
             | _ -> fail "contain an underlying type between <>"
         | _ -> fail "contain one space"
 
-    let parseProperty (line:string) : Choice<LineContent, ErrorText> =
+    let parseProperty (line:string) =
         let separator = line.IndexOf(':')
         match separator with
-        | -1 -> Choice2Of2 "Invalid property definition, should be 'name:value'"
+        | -1 -> Failure "Invalid property definition, should be 'name:value'"
         | _ ->
             let name = line.Substring(0, separator)
             let value = line.Substring(separator+1)
-            Choice1Of2 (Property(name,value))
+            Success (Property(name,value))
 
     let augmentChoice line isType contentOrErrorText =
         match contentOrErrorText with
-        | Choice1Of2(content) -> Choice1Of2 { Line = line; Content = content }
-        | Choice2Of2(errorText) -> Choice2Of2 { Line = line; ErrorText = errorText; IsInvalidType = isType }
+        | Success(content) -> Success { Line = line; Content = content }
+        | Failure(errorText) -> Failure { Line = line; ErrorText = errorText; IsInvalidType = isType }
 
     let parseLine (line:Line) =
         let text = line.Text
@@ -102,12 +103,13 @@ type Configuration =
     }
 
 module private LineParser =
-    let parseCast (text:string) =
+    let parseCast (text:string) = result {
         let lowerCasedText = text.ToLower()
         match lowerCasedText with
-        | "explicit" -> Choice1Of2 Cast.Explicit
-        | "implicit" -> Choice1Of2 Cast.Implicit
-        | _ -> Choice2Of2 (sprintf "Unknown cast type: '%s'" text)
+        | "explicit" -> return Cast.Explicit
+        | "implicit" -> return Cast.Implicit
+        | _ -> return! Failure (sprintf "Unknown cast type: '%s'" text)
+    }
 
     let parseOptionalString (text:string) =
         if System.String.IsNullOrWhiteSpace(text) then
@@ -115,7 +117,7 @@ module private LineParser =
         else
             Some(text)
 
-    let addProperty' (name:string) (value:string) (idType:IdType) = choice {
+    let addProperty' (name:string) (value:string) (idType:IdType) = result {
         match name with
         | "ValueProperty" -> return { idType with ValueProperty = value }
         | "AllowNull" -> return { idType with AllowNull = bool.Parse(value) }
@@ -128,18 +130,18 @@ module private LineParser =
             let! cast = parseCast(value)
             return{ idType with CastFromUnderlying = cast }
         | "FileName" -> return{ idType with FileName = parseOptionalString(value) }
-        | _ -> return! Choice2Of2 (sprintf "Property '%s' isn't supported" name)
+        | _ -> return! Failure (sprintf "Property '%s' isn't supported" name)
     }
 
-    let addProperty (content:LineContent) (idType:IdType) = choice {
+    let addProperty (content:LineContent) (idType:IdType) = result {
         match content with
         | Property(name, value) ->
             let! newType = idType |> addProperty' (name.Trim()) (value.Trim())
             return newType
-        | _ -> return! Choice2Of2 "Not a property definition"
+        | _ -> return! Failure "Not a property definition"
     }
 
-    let parseUnderlyingType typeName = choice {
+    let parseUnderlyingType typeName = result {
         match typeName with
         | "bool" -> return typeof<bool>
         | "byte" -> return typeof<byte>
@@ -163,17 +165,17 @@ module private LineParser =
             if type' <> null then
                 return type'
             else
-                return! Choice2Of2 (sprintf "Type '%s' not found." s)
+                return! Failure (sprintf "Type '%s' not found." s)
     }
 
-    let parseVisibility visibilityText = choice {
+    let parseVisibility visibilityText = result {
         match visibilityText with
         | "public" -> return Public
         | "internal" -> return Internal
-        | s -> return! Choice2Of2 (sprintf "Visibility can't be parsed: '%s'" s)
+        | s -> return! Failure (sprintf "Visibility can't be parsed: '%s'" s)
     }
 
-    let typeDefinitionToType (content:LineContent) = choice {
+    let typeDefinitionToType (content:LineContent) = result {
         match content with
         | TypeDefinition(visibility,namespace',name,underlyingType) ->
             let! underlyingType = parseUnderlyingType underlyingType
@@ -185,8 +187,9 @@ module private LineParser =
                     Visibility = visibility
                 }
             )
-        | _ -> return! Choice2Of2 "Not a type definition"
+        | _ -> return! Failure "Not a type definition"
     }
+
 
     let propertyWithNoValidType (line:ParsedLine) =
         {
@@ -211,22 +214,22 @@ module private LineParser =
             let continueOnType type' = linesToIdTypes (Some(type')) rest
 
             match line with
-            | Choice1Of2(line) ->
+            | Success(line) ->
                 match line.Content with
                 | Property(_,_) -> 
                     match currentType with
                     | Some(idType) -> 
                         let idType = idType |> addProperty line.Content
                         match idType with
-                        | Choice1Of2(idType) -> continueOnType idType
-                        | Choice2Of2(error) -> reportPropertyError (ParseError.fromString error line.Line)
+                        | Success(idType) -> continueOnType idType
+                        | Failure(error) -> reportPropertyError (ParseError.fromString error line.Line)
                     | Option.None -> reportPropertyError (propertyWithNoValidType line)
                 | TypeDefinition(_,_,_,_) ->
                     let newType = typeDefinitionToType line.Content
                     match newType with
-                    | Choice1Of2(newType) -> finishCurrentType newType
-                    | Choice2Of2(error) -> reportTypeError (ParseError.fromString error line.Line)
-            | Choice2Of2(error) ->
+                    | Success(newType) -> finishCurrentType newType
+                    | Failure(error) -> reportTypeError (ParseError.fromString error line.Line)
+            | Failure(error) ->
                 // If a type line was invalid we don't want the following properties to be associated with the previous type
                 // But if a property is invalid we want the following properties to be associated with the current type
                 match (error.IsInvalidType, currentType) with
@@ -237,7 +240,7 @@ module private LineParser =
             | Some(idType) -> ([idType], [])
             | Option.None -> ([], [])
 
-    let linesToConfiguration (lines:Choice<ParsedLine,ParseError> seq) : Configuration =
+    let linesToConfiguration (lines:Result<ParsedLine,ParseError> seq) : Configuration =
         let lines = lines |> List.ofSeq
         let (types, errors) = linesToIdTypes Option.None lines
         { Path = Option.None; Types = types; Errors = errors }
