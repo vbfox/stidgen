@@ -1,7 +1,6 @@
 ﻿module BlackFox.Stidgen.ConfigurationParser 
     
 open BlackFox.Stidgen.Description
-open ExtCore.Control
 open BlackFox.Stidgen.Control
 
 type LineContent =
@@ -83,7 +82,7 @@ module private TextParser =
         let text = line.Text
         let firstChar = text.[0]
 
-        if firstChar = ' ' || firstChar = '\t' then
+        if System.Char.IsWhiteSpace(firstChar) then
             parseProperty (text.Trim()) |> augmentChoice line false
         else
             parseTypeDefinition (text.Trim()) |> augmentChoice line true
@@ -125,11 +124,11 @@ module private LineParser =
         | "EqualsUnderlying" -> return { idType with EqualsUnderlying = bool.Parse(value) }
         | "CastToUnderlying" ->
             let! cast = parseCast(value)
-            return{ idType with CastToUnderlying = cast }
+            return { idType with CastToUnderlying = cast }
         | "CastFromUnderlying" ->
             let! cast = parseCast(value)
-            return{ idType with CastFromUnderlying = cast }
-        | "FileName" -> return{ idType with FileName = parseOptionalString(value) }
+            return { idType with CastFromUnderlying = cast }
+        | "FileName" -> return { idType with FileName = parseOptionalString(value) }
         | _ -> return! Failure (sprintf "Property '%s' isn't supported" name)
     }
 
@@ -189,7 +188,6 @@ module private LineParser =
             )
         | _ -> return! Failure "Not a type definition"
     }
-
 
     let propertyWithNoValidType (line:ParsedLine) =
         {
