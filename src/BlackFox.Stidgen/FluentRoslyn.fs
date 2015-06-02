@@ -31,18 +31,24 @@ module Literal =
         SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(i))
     let Zero = Int 0
 
-let addUsings (usings : string array) (compilationUnit : CompilationUnitSyntax) =
-    let directives = usings |> Array.map (fun name ->
-        SyntaxFactory.UsingDirective(SyntaxFactory.IdentifierName(name)))
+let toSyntaxList (source : 't seq) = SyntaxFactory.List<'t>(source)
+let toSeparatedList (source : 't seq) = SyntaxFactory.SeparatedList<'t>(source)
+let identifier (identifierName : string) = SyntaxFactory.IdentifierName(identifierName)
+
+let addUsings (usings : string seq) (compilationUnit : CompilationUnitSyntax) =
+    let directives =
+        usings
+        |> Seq.map (fun name -> SyntaxFactory.UsingDirective(identifier name))
+        |> Seq.toArray
 
     compilationUnit.AddUsings(directives)
 
-let inline addBaseTypes (types : TypeSyntax array) (input:^T) =
-    let baseTypes = types |> Array.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax)
+let inline addBaseTypes (types : TypeSyntax seq) (input:^T) =
+    let baseTypes = types |> Seq.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax) |> Seq.toArray
     (^T : (member AddBaseListTypes : BaseTypeSyntax array -> ^T) (input, baseTypes))
 
 let inline addModifiers syntaxKinds (input:^T) =
-    let tokens = syntaxKinds |> Array.map (fun k -> SyntaxFactory.Token(k))
+    let tokens = syntaxKinds |> Seq.map (fun k -> SyntaxFactory.Token(k)) |> Seq.toArray
     (^T : (member AddModifiers : SyntaxToken array -> ^T) (input, tokens))
 
 let inline withSemicolon (input:^T) =
@@ -73,6 +79,17 @@ let inline withBody (statements: StatementSyntax array) (input:^T) =
     let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
     (^T : (member WithBody : BlockSyntax -> ^T) (input, block))
 
+let inline addAttributeList (attributes:AttributeSyntax seq) (input:^T) =
+    let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+    (^T : (member AddAttributeLists : AttributeListSyntax[] -> ^T) (input, [|attributeList|]))
+
+let inline addAttribute attribute input =
+    addAttributeList [attribute] input
+    
+let makeAttribute name args =
+    let mappedArgs = args |> List.map (fun a -> SyntaxFactory.AttributeArgument(a))
+    SyntaxFactory.Attribute(name, SyntaxFactory.AttributeArgumentList(mappedArgs |> toSeparatedList))
+
 /// get;
 let addEmptyGetter (property:PropertyDeclarationSyntax) =
     property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration) |> withSemicolon)
@@ -88,8 +105,6 @@ let addGetter body (property:PropertyDeclarationSyntax) =
 /// set { body }
 let addSetter body (property:PropertyDeclarationSyntax) =
     property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration, body))
-
-let identifier (identifierName : string) = SyntaxFactory.IdentifierName(identifierName)
 
 /// onExpr.name
 let memberAccess (name : string) (onExpr : ExpressionSyntax) =
@@ -139,16 +154,16 @@ let setThisMember (memberName:string) value = set (thisMemberAccess memberName) 
 
 /// new createdType(argumentExpressions)
 let objectCreation createdType argumentExpressions =
-    let args = argumentExpressions |> Array.map (fun a -> SyntaxFactory.Argument(a))
-    let argList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList<ArgumentSyntax>(args))
+    let args = argumentExpressions |> Seq.map (fun a -> SyntaxFactory.Argument(a))
+    let argList = SyntaxFactory.ArgumentList(args |> toSeparatedList)
 
     SyntaxFactory.ObjectCreationExpression(createdType)
         .WithArgumentList(argList)
 
 /// expression(argumentExpressions);
-let invocation (expression : ExpressionSyntax) (argumentExpressions : ExpressionSyntax array) =
-    let args = argumentExpressions |> Array.map (fun a -> SyntaxFactory.Argument(a))
-    let argList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList<ArgumentSyntax>(args))
+let invocation (expression : ExpressionSyntax) (argumentExpressions : ExpressionSyntax seq) =
+    let args = argumentExpressions |> Seq.map (fun a -> SyntaxFactory.Argument(a))
+    let argList = SyntaxFactory.ArgumentList(args |> toSeparatedList)
 
     SyntaxFactory.InvocationExpression(expression).WithArgumentList(argList)
 
@@ -213,7 +228,7 @@ let ifelse condition then' else' = SyntaxFactory.IfStatement(condition, then', S
 let emptyBlock = SyntaxFactory.Block()
 
 /// { statements }
-let block (statements : StatementSyntax array) = SyntaxFactory.Block(statements)
+let block (statements : StatementSyntax seq) = SyntaxFactory.Block(statements)
 
 /// throw expression;
 let throw expression = SyntaxFactory.ThrowStatement(expression)
@@ -249,8 +264,8 @@ type NameSyntax with
     static member private Global = SyntaxFactory.IdentifierName(SyntaxFactory.Token(SyntaxKind.GlobalKeyword))
     static member private PrefixWithGlobal name = SyntaxFactory.AliasQualifiedName(NameSyntax.Global, name)
 
-    static member MakeQualified (parts : string array) =
-        parts |> Array.fold
+    static member MakeQualified (parts : string seq) =
+        parts |> Seq.fold
             (fun a b ->
                 if a = null then
                     NameSyntax.PrefixWithGlobal (SyntaxFactory.IdentifierName(b)) :> NameSyntax
@@ -262,7 +277,7 @@ type NameSyntax with
     static member MakeGeneric (name : string) (types : TypeSyntax seq) =
         let indexOfTilde = name.IndexOf('`')
         let name = if indexOfTilde > 0 then name.Substring(0, indexOfTilde) else name
-        let typeList = SyntaxFactory.TypeArgumentList(SyntaxFactory.SeparatedList<TypeSyntax>(types))
+        let typeList = SyntaxFactory.TypeArgumentList(types |> toSeparatedList)
         SyntaxFactory.GenericName(name).WithTypeArgumentList(typeList)
 
     static member FromType (t:System.Type) =
@@ -289,4 +304,4 @@ let typesyntaxof<'t> = NameSyntax.FromType(typeof<'t>) :> TypeSyntax
 let throwIfArgumentNull argName =
     if'
         (equals (identifier argName) (Literal.Null))
-        (block [| throwException typesyntaxof<System.ArgumentNullException> [|Literal.String argName|] |])
+        (block [ throwException typesyntaxof<System.ArgumentNullException> [|Literal.String argName|] ])
