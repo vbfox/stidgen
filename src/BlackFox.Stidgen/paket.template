@@ -1,10 +1,7 @@
-type project
-id
-    stidgen
-owners
-    Julien Roncaglia
-authors
-    Julien Roncaglia
+type file
+id stidgen
+owners Julien Roncaglia
+authors Julien Roncaglia
 projectUrl
     https://github.com/vbfox/stidgen
 licenseUrl
@@ -17,3 +14,7 @@ summary
     Strongly Typed ID type Generator
 description
     Strongly Typed ID type Generator
+files
+    ../../bin/BlackFox.Stidgen/*.dll ==> tools
+    ../../bin/BlackFox.Stidgen/*.exe ==> tools
+    ../../bin/BlackFox.Stidgen/*.config ==> tools
