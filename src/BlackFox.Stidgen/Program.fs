@@ -1,8 +1,8 @@
 ﻿module BlackFox.Stidgen.Program
 
 let printUsage () =
-    printf "Usage:"
-    printf "    stidgen fileName"
+    printfn "Usage:"
+    printfn "    stidgen fileName"
 
 [<EntryPoint>]
 let main argv = 
