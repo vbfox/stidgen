@@ -12,6 +12,7 @@ module Operators =
     let (!!) t = Async.AwaitTask t
 
 type TypeSyntax with
+    static member Void = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword))
     static member Object = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ObjectKeyword))
     static member String = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))
     static member Int = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
@@ -174,6 +175,10 @@ let invocation (expression : ExpressionSyntax) (argumentExpressions : Expression
     let argList = SyntaxFactory.ArgumentList(args |> toSeparatedList)
 
     SyntaxFactory.InvocationExpression(expression).WithArgumentList(argList)
+
+/// expression(argumentExpressions);
+let invocationStatement (expression : ExpressionSyntax) (argumentExpressions : ExpressionSyntax seq) =
+    SyntaxFactory.ExpressionStatement(invocation expression argumentExpressions)
 
 let private variable' ``type`` (name:string) (value: ExpressionSyntax option) =
     let declarator = SyntaxFactory.VariableDeclarator(name)

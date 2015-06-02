@@ -24,6 +24,7 @@ type private ParsedInfo =
         ValueAccess : ExpressionSyntax -> ExpressionSyntax
         PropertyName : string
         FieldName : string
+        CheckMethodName : string
     }
 
 let private value info x = x :> ExpressionSyntax |> info.ValueAccess
@@ -59,6 +60,12 @@ let private internIfNeeded arg info =
     else
         arg :> ExpressionSyntax
 
+let private makeCheckValuePartial info =
+    SyntaxFactory.MethodDeclaration(TypeSyntax.Void, info.CheckMethodName)
+    |> addModifiers [|SyntaxKind.PartialKeyword|]
+    |> addParameter info.FieldName info.UnderlyingTypeSyntax
+    |> withSemicolon
+
 let private makeCtor info =
     let argName = info.FieldName
     let arg = identifier argName
@@ -69,6 +76,7 @@ let private makeCtor info =
     |> addModifiers [|SyntaxKind.PublicKeyword|]
     |> addParameter argName info.UnderlyingTypeSyntax
     |?> (not info.AllowNull, addBodyStatement checkForNull)
+    |> addBodyStatement (invocationStatement (thisMemberAccess info.CheckMethodName) [arg])
     |> addBodyStatement assignProperty
 
 let private returnCallVoidMethodOnValue name info =
@@ -335,13 +343,18 @@ module GeneratedCodeAttribute =
         let attribute = makeAttribute nameSyntax [toolName; toolVersion]
         typeMember |> addAttribute attribute
 
+    let private isPartial (method' : MethodDeclarationSyntax) =
+        method'.Modifiers.Any(SyntaxKind.PartialKeyword)
+
     /// Add the 'GeneratedCodeAttribute' to all members of the type
     let addToAllMembers (typeSyntax : StructDeclarationSyntax) =
         let members = typeSyntax.Members |> Seq.map (fun m -> 
             match m with
             | :? PropertyDeclarationSyntax as property -> property |> addToMember :> MemberDeclarationSyntax
             | :? FieldDeclarationSyntax as field -> field |> addToMember :> MemberDeclarationSyntax
-            | :? MethodDeclarationSyntax as method' -> method' |> addToMember :> MemberDeclarationSyntax
+            | :? MethodDeclarationSyntax as method' ->
+                let method' = if isPartial method' then method' else method' |> addToMember
+                method' :> MemberDeclarationSyntax
             | :? OperatorDeclarationSyntax as operator -> operator |> addToMember :> MemberDeclarationSyntax
             | :? ConversionOperatorDeclarationSyntax as cast -> cast |> addToMember :> MemberDeclarationSyntax
             | :? ConstructorDeclarationSyntax as ctor -> ctor |> addToMember :> MemberDeclarationSyntax
@@ -362,6 +375,7 @@ let private makeClass idType info =
         |> addMember' makeValueField
         |> addMember' makeValueProperty
         |> addMember' makeCtor
+        |> addMember' makeCheckValuePartial
         |> addMember' makeToString
         |> addMember' Equality.makeGetHashCode
         |> addMember' Equality.makeEquals
@@ -390,6 +404,7 @@ let private makeInfo idType =
         ValueAccess = (fun expr -> expr |> dottedMemberAccess [fieldName])
         PropertyName = propertyName
         FieldName = fieldName
+        CheckMethodName = "Check" + propertyName
     }
 
 let private topOfFileComments = @"----------------------
