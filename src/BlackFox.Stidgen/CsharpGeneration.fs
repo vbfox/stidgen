@@ -326,7 +326,8 @@ module private Convertible =
             classDeclaration
 
 module GeneratedCodeAttribute = 
-    let private nameSyntax = namesyntaxof<System.CodeDom.Compiler.GeneratedCodeAttribute>
+    // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
+    let private nameSyntax = SyntaxFactory.IdentifierName("GeneratedCode")
 
     let inline private addToMember typeMember =
         let toolName = Literal.String "BlackFox.Stidgen"
@@ -404,7 +405,7 @@ let makeRootNode idType =
                 .AddMembers(generatedClass) :> MemberDeclarationSyntax
 
     emptyFile
-        |> addUsings [ "System" ]
+        |> addUsings [ "System"; "System.CodeDom.Compiler" ]
         |> addMember rootMember
 
 let private makeDocument (rootNode:SyntaxNode) =
