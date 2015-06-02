@@ -17,7 +17,7 @@ let private makePath configurationPath (idType:IdType) =
     let fileName =
         match idType.FileName with
         | Some(fileName) -> fileName
-        | Option.None -> (idType.Name |> normalizeFileName) + ".cs"
+        | Option.None -> (idType.Name |> normalizeFileName) + ".Generated.cs"
 
     Path.Combine(folder, fileName)
 
