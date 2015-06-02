@@ -325,6 +325,29 @@ module private Convertible =
         else
             classDeclaration
 
+module GeneratedCodeAttribute = 
+    let private nameSyntax = namesyntaxof<System.CodeDom.Compiler.GeneratedCodeAttribute>
+
+    let inline private addToMember typeMember =
+        let toolName = Literal.String "BlackFox.Stidgen"
+        let toolVersion = Literal.String AssemblyVersionInformation.Version
+        let attribute = makeAttribute nameSyntax [toolName; toolVersion]
+        typeMember |> addAttribute attribute
+
+    /// Add the 'GeneratedCodeAttribute' to all members of the type
+    let addToAllMembers (typeSyntax : StructDeclarationSyntax) =
+        let members = typeSyntax.Members |> Seq.map (fun m -> 
+            match m with
+            | :? PropertyDeclarationSyntax as property -> property |> addToMember :> MemberDeclarationSyntax
+            | :? FieldDeclarationSyntax as field -> field |> addToMember :> MemberDeclarationSyntax
+            | :? MethodDeclarationSyntax as method' -> method' |> addToMember :> MemberDeclarationSyntax
+            | :? OperatorDeclarationSyntax as operator -> operator |> addToMember :> MemberDeclarationSyntax
+            | :? ConversionOperatorDeclarationSyntax as cast -> cast |> addToMember :> MemberDeclarationSyntax
+            | :? ConstructorDeclarationSyntax as ctor -> ctor |> addToMember :> MemberDeclarationSyntax
+            | _ -> m
+            )
+        typeSyntax.WithMembers( members |> toSyntaxList )
+
 let private makeClass idType info = 
     let visibility = visibilityToKeyword idType.Visibility
 
@@ -348,6 +371,7 @@ let private makeClass idType info =
         |> Casts.addCastFromUnderlyingType info
         |> Casts.addCastToUnderlyingType info
         |> Convertible.addIConvertibleMembers info
+        |> GeneratedCodeAttribute.addToAllMembers
 
 let private makeInfo idType =
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
@@ -380,7 +404,7 @@ let makeRootNode idType =
                 .AddMembers(generatedClass) :> MemberDeclarationSyntax
 
     emptyFile
-        |> addUsings [|"System"|]
+        |> addUsings [ "System" ]
         |> addMember rootMember
 
 let private makeDocument (rootNode:SyntaxNode) =
