@@ -1,0 +1,19 @@
+type project
+id
+    stidgen
+owners
+    Julien Roncaglia
+authors
+    Julien Roncaglia
+projectUrl
+    https://github.com/vbfox/stidgen
+licenseUrl
+    https://github.com/vbfox/stidgen/blob/master/LICENSE.md
+requireLicenseAcceptance
+    false
+copyright
+    Copyright 2015
+summary
+    Strongly Typed ID type Generator
+description
+    Strongly Typed ID type Generator

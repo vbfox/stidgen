@@ -1,8 +1,8 @@
 source https://nuget.org/api/v2
 
 // Code
-nuget FSharp.Core
-nuget Microsoft.CodeAnalysis prerelease
+nuget FSharp.Core ~> 3.1
+nuget Microsoft.CodeAnalysis = 1.0.0-rc2
 
 // Unit tests
 nuget NUnit
