@@ -90,6 +90,14 @@ let makeAttribute name args =
     let mappedArgs = args |> List.map (fun a -> SyntaxFactory.AttributeArgument(a))
     SyntaxFactory.Attribute(name, SyntaxFactory.AttributeArgumentList(mappedArgs |> toSeparatedList))
 
+let makeSingleLineComments (s:string) = 
+    let lines = System.Text.RegularExpressions.Regex.Split(s, "\r\n|\r|\n")
+    lines |> Array.map (fun l -> SyntaxFactory.Comment(sprintf "//%s\r\n" l))
+    
+let addTriviaBefore (trivia : SyntaxTrivia seq) (node : #SyntaxNode) =
+    let newTrivia = Seq.concat [trivia; node.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+    node.WithLeadingTrivia(newTrivia)
+
 /// get;
 let addEmptyGetter (property:PropertyDeclarationSyntax) =
     property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration) |> withSemicolon)
