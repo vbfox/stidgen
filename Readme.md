@@ -15,8 +15,8 @@ This tool uses simple text files as input like :
 And generate for each type specified a type that can be used as a strongly-typed ID:
 
 * It's an immutable value type with a single member.
-* The class is partial to allow addition of methods and properties.
-* Null values are disallowed by default and an extensibility point is available to add more application-dependent checks.
+* The `struct` is partial to allow addition of methods and properties.
+* `null` values are disallowed by default and an extensibility point is available to add more application-dependent checks.
 * Casts from and to the underlying type are available. (explicit by default)  
 * Equality member and operators are lifted, by default the ID types are only equals between themselves but equality with the underlying type is optionally available.
 * `IEquatable<T>` is implemented.
