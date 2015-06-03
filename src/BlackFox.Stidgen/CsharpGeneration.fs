@@ -16,6 +16,7 @@ open Microsoft.CodeAnalysis.Simplification
 type private ParsedInfo =
     {
         Id : IdType
+        CanBeNull : bool
         AllowNull : bool
         NamespaceProvided : bool
         UnderlyingTypeSyntax : TypeSyntax
@@ -75,7 +76,7 @@ let private makeCtor info =
     SyntaxFactory.ConstructorDeclaration(info.Id.Name)
     |> addModifiers [|SyntaxKind.PublicKeyword|]
     |> addParameter argName info.UnderlyingTypeSyntax
-    |?> (not info.AllowNull, addBodyStatement checkForNull)
+    |?> (not info.AllowNull && info.CanBeNull, addBodyStatement checkForNull)
     |> addBodyStatement (invocationStatement (thisMemberAccess info.CheckMethodName) [arg])
     |> addBodyStatement assignProperty
 
@@ -104,7 +105,7 @@ let private makeToString info =
 
     SyntaxFactory.MethodDeclaration(TypeSyntax.String, "ToString")
     |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-    |?> ((info.AllowNull && not isString), addBodyStatement returnIfNull)
+    |?> ((info.CanBeNull && not isString), addBodyStatement returnIfNull)
     |> addBodyStatement returnToString
 
 module private Equality =
@@ -119,7 +120,7 @@ module private Equality =
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Int, "GetHashCode")
         |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-        |?> (info.AllowNull, addBodyStatement returnIfNull)
+        |?> (info.CanBeNull, addBodyStatement returnIfNull)
         |> addBodyStatement returnGetHashCode
 
     /// Call the most adapted underlying equals method between underlying-typed expressions.
@@ -319,7 +320,9 @@ module private Convertible =
                     parametersForCall)
 
         // Add body
-        declaration |> addBodyStatements [| bodyCheck; bodyRet|]
+        declaration
+            |?> (info.CanBeNull, addBodyStatement bodyCheck)
+            |> addBodyStatement bodyRet
 
     let private addIConvertibleMethods info (classDeclaration : StructDeclarationSyntax) =
         iconvertible.GetMethods()
@@ -396,7 +399,8 @@ let private makeInfo idType =
 
     {
         Id = idType
-        AllowNull = idType.AllowNull && idType.UnderlyingType.IsClass
+        CanBeNull = idType.UnderlyingType.IsClass || idType.UnderlyingType.IsInterface
+        AllowNull = idType.AllowNull
         NamespaceProvided = namespaceProvided
         UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.UnderlyingType.FullName)
         GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
