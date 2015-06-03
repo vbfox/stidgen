@@ -129,6 +129,7 @@ module private LineParser =
             let! cast = parseCast(value)
             return { idType with CastFromUnderlying = cast }
         | "FileName" -> return { idType with FileName = parseOptionalString(value) }
+        | "ProtobufnetSerializable" -> return { idType with ProtobufnetSerializable = bool.Parse(value) }
         | _ -> return! Failure (sprintf "Property '%s' isn't supported" name)
     }
 

@@ -52,6 +52,9 @@ type IdType =
 
         /// Name of the generated file, if not specified the type name will be used
         FileName : string option
+
+        /// Enable generation of the protobuf-net attributes necessary for serialization
+        ProtobufnetSerializable : bool
     }
 
 let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) = 
@@ -68,6 +71,7 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
             EqualsUnderlying = false
             InternString = true
             FileName = Option.None
+            ProtobufnetSerializable = false
         }
 
     idTypeBuilder idType
