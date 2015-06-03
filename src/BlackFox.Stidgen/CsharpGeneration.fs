@@ -28,6 +28,7 @@ type private ParsedInfo =
         CheckMethodName : string
     }
 
+/// Get the value using the private field from an instance of the Id type
 let private value info x = x :> ExpressionSyntax |> info.ValueAccess
 
 let private (|?>) x (c, f) = if c then f x else x
@@ -243,30 +244,94 @@ module private Equality =
         |> addMember (makeOperator info false info.GeneratedTypeSyntax info.GeneratedTypeSyntax)
 
 module private Casts =
-    let addCast fromType toType cast expressionMaker generatedClass =
+    let addCast fromType toType cast expressionMaker generatedType =
         let parameterName = "x"
         let makeCast cast' = 
             SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(cast'), toType)
-                |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
+                |> addModifiers [ SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword ]
                 |> addParameter parameterName fromType
                 |> addBodyStatement (ret (expressionMaker parameterName)) 
 
-        let addCast' cast' = generatedClass |> addMember (makeCast cast')
+        let addCast' cast' = generatedType |> addMember (makeCast cast')
 
         match cast with
-        | None -> generatedClass
+        | None -> generatedType
         | Implicit -> addCast' SyntaxKind.ImplicitKeyword
         | Explicit -> addCast' SyntaxKind.ExplicitKeyword
-
-    let addCastToUnderlyingType info generatedClass = 
-        generatedClass
+        
+    /// IdType -> UnderlyingType
+    let addToUnderlyingType info generatedType = 
+        generatedType
         |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax info.Id.CastToUnderlying
             (fun n -> value info (identifier n))
-
-    let addCastFromUnderlyingType info generatedClass = 
-        generatedClass
-        |> addCast info.UnderlyingTypeSyntax info.GeneratedTypeSyntax info.Id.CastFromUnderlying
+    
+    /// UnderlyingType -> IdType
+    let addFromUnderlyingType info generatedType = 
+        generatedType
+        |> addCast
+            info.UnderlyingTypeSyntax
+            info.GeneratedTypeSyntax
+            info.Id.CastFromUnderlying
             (fun n -> objectCreation info.GeneratedTypeSyntax [|identifier n|])
+
+    /// Get a nullable version of the underlying type if it can't be null.
+    /// Or the underlying type itself otherwise.
+    let underlyingNullableIfNeeded info =
+        if info.CanBeNull then
+            info.UnderlyingTypeSyntax
+        else
+            nullable info.UnderlyingTypeSyntax :> TypeSyntax
+
+    /// IdType? -> UnderlyingType?
+    let addToUnderlyingTypeNullable info generatedType =
+        let toType = underlyingNullableIfNeeded info
+        let maker (argName:string) =
+            let argId = identifier argName
+            let hasValue = argId |> dottedMemberAccess ["HasValue"]
+            let underlyingValue = argId |> dottedMemberAccess ["Value"; info.FieldName]
+
+            let condition =
+                if info.CanBeNull then
+                    or' (not' hasValue) (equals underlyingValue Literal.Null)
+                else
+                    parenthesis (not' hasValue)
+
+            cond condition (cast toType Literal.Null) underlyingValue
+
+        generatedType
+        |> addCast
+            (nullable info.GeneratedTypeSyntax)
+            toType
+            info.Id.CastToUnderlying
+            maker
+
+    /// UnderlyingType? -> IdType?
+    let addFromUnderlyingTypeNullable info generatedType = 
+        let toType = nullable info.GeneratedTypeSyntax
+        let maker (argName:string) =
+            let argId = identifier argName
+            let hasValue = argId |> dottedMemberAccess ["HasValue"]
+            let underlyingValue =
+                if info.CanBeNull then argId :> ExpressionSyntax else argId |> dottedMemberAccess ["Value"]
+            let newId = objectCreation info.GeneratedTypeSyntax [underlyingValue]
+            let condition = if info.CanBeNull then equals argId Literal.Null else parenthesis (not' hasValue)
+
+            cond condition (cast toType Literal.Null) newId
+
+        generatedType
+        |> addCast
+            (underlyingNullableIfNeeded info)
+            toType
+            info.Id.CastFromUnderlying
+            maker
+
+    /// Add all casts to the type
+    let addAll info generatedType =
+        generatedType
+            |> addToUnderlyingType info
+            |> addFromUnderlyingType info
+            |> addToUnderlyingTypeNullable info
+            |> addFromUnderlyingTypeNullable info
 
 module private Convertible =
     open System.Reflection
@@ -386,8 +451,7 @@ let private makeClass idType info =
         |> addMember' Equality.makeStaticEquals
         |> Equality.addOperators info
         |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
-        |> Casts.addCastFromUnderlyingType info
-        |> Casts.addCastToUnderlyingType info
+        |> Casts.addAll info
         |> Convertible.addIConvertibleMembers info
         |> GeneratedCodeAttribute.addToAllMembers
 

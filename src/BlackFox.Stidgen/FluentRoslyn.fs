@@ -36,6 +36,12 @@ let toSyntaxList (source : 't seq) = SyntaxFactory.List<'t>(source)
 let toSeparatedList (source : 't seq) = SyntaxFactory.SeparatedList<'t>(source)
 let identifier (identifierName : string) = SyntaxFactory.IdentifierName(identifierName)
 
+/// T?
+let nullable typeSyntax = SyntaxFactory.NullableType(typeSyntax)
+
+/// T?
+let nullable' identifierName = nullable (identifier identifierName)
+
 let addUsings (usings : string seq) (compilationUnit : CompilationUnitSyntax) =
     let directives =
         usings
