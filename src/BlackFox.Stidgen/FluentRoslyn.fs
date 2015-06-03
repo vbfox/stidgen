@@ -95,7 +95,9 @@ let inline addAttribute attribute input =
     
 let makeAttribute name args =
     let mappedArgs = args |> List.map (fun a -> SyntaxFactory.AttributeArgument(a))
-    SyntaxFactory.Attribute(name, SyntaxFactory.AttributeArgumentList(mappedArgs |> toSeparatedList))
+    // Special casing the empty list as null generate an attribute without empty parenthesis after it
+    let finalArgs = if mappedArgs.IsEmpty then null else SyntaxFactory.AttributeArgumentList(mappedArgs |> toSeparatedList)
+    SyntaxFactory.Attribute(name, finalArgs)
 
 let makeSingleLineComments (s:string) = 
     let lines = System.Text.RegularExpressions.Regex.Split(s, "\r\n|\r|\n")

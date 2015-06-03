@@ -38,9 +38,29 @@ let private visibilityToKeyword = function
     | Public -> SyntaxKind.PublicKeyword
     | Internal -> SyntaxKind.InternalKeyword
 
+module private ProtobufNet =
+    let addProtoMember info field =
+        if info.Id.ProtobufnetSerializable then
+            field |> addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1])
+        else
+            field
+
+    let addProtoContract info (generatedType:StructDeclarationSyntax) =
+        if info.Id.ProtobufnetSerializable then
+            generatedType |> addAttribute (makeAttribute (identifier "ProtoContract") [])
+        else
+            generatedType
+
+    let addUsing info file =
+        if info.Id.ProtobufnetSerializable then
+            file |> addUsings [ "ProtoBuf"]
+        else
+            file
+
 let private makeValueField info =
     field info.UnderlyingTypeSyntax info.FieldName
         |> addModifiers [|SyntaxKind.PrivateKeyword; SyntaxKind.ReadOnlyKeyword|]
+        |> ProtobufNet.addProtoMember info
 
 let private makeValueProperty info =
     let body = block [| ret info.ThisValueMemberAccess |]
@@ -403,7 +423,7 @@ module private Convertible =
 
 module GeneratedCodeAttribute = 
     // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
-    let private nameSyntax = SyntaxFactory.IdentifierName("GeneratedCode")
+    let private nameSyntax = identifier "GeneratedCode"
 
     let inline private addToMember typeMember =
         let toolName = Literal.String "BlackFox.Stidgen"
@@ -430,15 +450,16 @@ module GeneratedCodeAttribute =
             )
         typeSyntax.WithMembers( members |> toSyntaxList )
 
-let private makeClass idType info = 
-    let visibility = visibilityToKeyword idType.Visibility
+let private makeClass info = 
+    let visibility = visibilityToKeyword info.Id.Visibility
 
     let addMember' builder (decl : StructDeclarationSyntax) =
         decl |> addMember (builder info)
 
-    (struct' idType.Name)
+    (struct' info.Id.Name)
         |> addBaseTypes [| Equality.iequatableOf info.GeneratedTypeSyntax |]
         |?> (info.Id.EqualsUnderlying, addBaseTypes [| Equality.iequatableOf info.UnderlyingTypeSyntax |])
+        |> ProtobufNet.addProtoContract info
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
         |> addMember' makeValueField
         |> addMember' makeValueProperty
@@ -483,7 +504,7 @@ let private topOfFileComments = @"----------------------
 
 let makeRootNode idType = 
     let info = makeInfo idType
-    let generatedClass = makeClass idType info
+    let generatedClass = makeClass info
 
     let rootMember =
         if String.IsNullOrEmpty(idType.Namespace) then
@@ -494,6 +515,7 @@ let makeRootNode idType =
 
     emptyFile
         |> addUsings [ "System"; "System.CodeDom.Compiler" ]
+        |> ProtobufNet.addUsing info
         |> addMember rootMember
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
 
