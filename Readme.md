@@ -46,7 +46,7 @@ Each definition file can contain a number of types of the form :
 
 ### Properties :
 
-* **ValueProperty** (string): Specify the name of the property containing the underlying value. Default to "Value.
+* **ValueProperty** (string): Specify the name of the property containing the underlying value. Default to "Value".
 * **AllowNull** (bool): Allow null underlying values (only applies if the underlying type is a reference type). Default to false.
 * **InternString** (bool): Intern string underlying values (only applies if the underlying type is `string`. Default to true.
 * **EqualsUnderlying** (bool): Make the underlying be equal to the Id type when Equals and == are called.
