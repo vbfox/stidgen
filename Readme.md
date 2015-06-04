@@ -53,3 +53,4 @@ Each definition file can contain a number of types of the form :
 * **CastToUnderlying** ("explicit" or "implicit"): Specify how is generated the cast from the id type to the underlying type. Default to "explicit".
 * **CastFromUnderlying** ("explicit" or "implicit"): Specify how is generated the cast from the underlying type to the id type. Default to "explicit".
 * **FileName** (string): Full name of the file to generate for this type. Default to "TypeName.Generated.cs".
+* **ProtobufnetSerializable** (bool): Enable the generation of `[ProtoContract]` and `[ProtoMember]` attributes for [protobuf-net](https://github.com/mgravell/protobuf-net) support.
