@@ -39,23 +39,19 @@ let private visibilityToKeyword = function
     | Internal -> SyntaxKind.InternalKeyword
 
 module private ProtobufNet =
+    let ifEnabled info arg f = if info.Id.ProtobufnetSerializable then f arg else arg
+
     let addProtoMember info field =
-        if info.Id.ProtobufnetSerializable then
-            field |> addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1])
-        else
-            field
+        ifEnabled info field
+            <| addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1])
 
     let addProtoContract info (generatedType:StructDeclarationSyntax) =
-        if info.Id.ProtobufnetSerializable then
-            generatedType |> addAttribute (makeAttribute (identifier "ProtoContract") [])
-        else
-            generatedType
+        ifEnabled info generatedType
+            <| addAttribute (makeAttribute (identifier "ProtoContract") [])
 
     let addUsing info file =
-        if info.Id.ProtobufnetSerializable then
-            file |> addUsings [ "ProtoBuf"]
-        else
-            file
+        ifEnabled info file
+            <| addUsings ["ProtoBuf"]
 
 let private makeValueField info =
     field info.UnderlyingTypeSyntax info.FieldName
