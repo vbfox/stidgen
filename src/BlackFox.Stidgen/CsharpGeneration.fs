@@ -515,39 +515,48 @@ let makeRootNode idType =
         |> addMember rootMember
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
 
-let private makeDocument (rootNode:SyntaxNode) =
-    let workspace = new AdhocWorkspace()
-    let project = workspace.AddProject("MyProject", LanguageNames.CSharp)
+module DocumentGeneration =
 
-    let mscorlib = PortableExecutableReference.CreateFromAssembly(typedefof<obj>.Assembly)
-    let project = project.AddMetadataReference(mscorlib)
-    workspace.TryApplyChanges(project.Solution) |> ignore
+    let private makeDocument (rootNode:SyntaxNode) =
+        let workspace = new AdhocWorkspace()
+        let project = workspace.AddProject("MyProject", LanguageNames.CSharp)
 
-    project.AddDocument("GeneratedId.cs", rootNode)
+        let mscorlib = PortableExecutableReference.CreateFromAssembly(typedefof<obj>.Assembly)
+        let project = project.AddMetadataReference(mscorlib)
+        workspace.TryApplyChanges(project.Solution) |> ignore
 
-let private simplifyDocumentAsync (doc:Document) = 
-    async {
-        let! root = !! doc.GetSyntaxRootAsync()
-        let newRoot = root.WithAdditionalAnnotations(Simplifier.Annotation)
-        let newDoc = doc.WithSyntaxRoot(newRoot)
+        project.AddDocument("GeneratedId.cs", rootNode)
 
-        return! !! Simplifier.ReduceAsync(newDoc)
-    }
+    let private simplifyDocumentAsync (doc:Document) = 
+        async {
+            let! root = !! doc.GetSyntaxRootAsync()
+            let newRoot = root.WithAdditionalAnnotations(Simplifier.Annotation)
+            let newDoc = doc.WithSyntaxRoot(newRoot)
 
-let private formatDocumentAsync (doc:Document) =
-    async {
-        let! root = !! doc.GetSyntaxRootAsync()
-        let newRoot = root.WithAdditionalAnnotations(Formatter.Annotation)
-        let newDoc = doc.WithSyntaxRoot(newRoot)
+            return! !! Simplifier.ReduceAsync(newDoc)
+        }
 
-        return! !! Formatter.FormatAsync(newDoc)
-    }
+    let private formatDocumentAsync (doc:Document) =
+        async {
+            let! root = !! doc.GetSyntaxRootAsync()
+            let newRoot = root.WithAdditionalAnnotations(Formatter.Annotation)
+            let newDoc = doc.WithSyntaxRoot(newRoot)
+
+            return! !! Formatter.FormatAsync(newDoc)
+        }
+
+    let makeClean node =
+        async {
+            return! node
+                |> makeDocument
+                |> simplifyDocumentAsync
+                |!> formatDocumentAsync
+        }
 
 let private rootNodeToStringAsync node =
     async {
-        let document = makeDocument node
-        let! formatted = document |> simplifyDocumentAsync |!> formatDocumentAsync
-        let! finalNode = !! formatted.GetSyntaxRootAsync()
+        let! document = DocumentGeneration.makeClean node
+        let! finalNode = !! document.GetSyntaxRootAsync()
 
         return finalNode.GetText().ToString()
     }
