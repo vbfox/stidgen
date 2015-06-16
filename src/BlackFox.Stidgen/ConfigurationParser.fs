@@ -121,20 +121,36 @@ module private LineParser =
         else
             Some(text)
 
+    let parseBool (text:string) =
+        match bool.TryParse(text) with
+        | (true, parsed) -> Success parsed
+        | (false, _) -> Failure (sprintf "The value '%s' isn't a boolean value" text)
+
     let addProperty' (name:string) (value:string) (idType:IdType) = result {
         match name with
         | "ValueProperty" -> return { idType with ValueProperty = value }
-        | "AllowNull" -> return { idType with AllowNull = bool.Parse(value) }
-        | "InternString" -> return { idType with InternString = bool.Parse(value) }
-        | "EqualsUnderlying" -> return { idType with EqualsUnderlying = bool.Parse(value) }
+        | "AllowNull" ->
+            let! b = parseBool value
+            return { idType with AllowNull = b }
+        | "InternString" ->
+            let! b = parseBool value
+            return { idType with InternString = b }
+        | "EqualsUnderlying" ->
+            let! b = parseBool value
+            return { idType with EqualsUnderlying = b }
         | "CastToUnderlying" ->
             let! cast = parseCast(value)
             return { idType with CastToUnderlying = cast }
         | "CastFromUnderlying" ->
             let! cast = parseCast(value)
             return { idType with CastFromUnderlying = cast }
+        | "UseNameAsFileName" ->
+            let! b = parseBool value
+            return { idType with UseNameAsFileName = b }
         | "FileName" -> return { idType with FileName = parseOptionalString(value) }
-        | "ProtobufnetSerializable" -> return { idType with ProtobufnetSerializable = bool.Parse(value) }
+        | "ProtobufnetSerializable" ->
+            let! b = parseBool value
+            return { idType with ProtobufnetSerializable = b }
         | _ -> return! Failure (sprintf "Property '%s' isn't supported" name)
     }
 

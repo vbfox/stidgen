@@ -521,8 +521,8 @@ let private makeFileLevelNodes (idTypes : ParsedInfo list) =
             [nsNode] :> MemberDeclarationSyntax seq
     )
 
-let makeRootNode (idTypes : IdType list) =
-    let infos = idTypes |> List.map makeInfo
+let makeRootNode (idTypes : IdType seq) =
+    let infos = idTypes |> List.ofSeq |> List.map makeInfo
     let fileLevelNodes = infos |> makeFileLevelNodes
 
     emptyFile
@@ -579,14 +579,14 @@ let private rootNodeToStringAsync node =
 
 /// Transform a list of ID Types that should go into a file into the text
 /// content of this file
-let idTypesToStringAsync idType =
-    idType
+let idTypesToStringAsync idTypes =
+    idTypes
         |> makeRootNode
         |> rootNodeToStringAsync
 
 /// Transform a list of ID Types that should go into a file into the text
 /// content of this file
-let idTypesToString idType =
-    idType
+let idTypesToString idTypes =
+    idTypes
         |> idTypesToStringAsync
         |> Async.RunSynchronously

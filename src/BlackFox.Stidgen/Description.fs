@@ -50,7 +50,11 @@ type IdType =
         /// If the underlying type is string, are the values interned before being stored
         InternString : bool
 
-        /// Name of the generated file, if not specified the type name will be used
+        /// Specify if the name of the ID type should be used as the name of the file.
+        /// By default the code is generated in a file named as the .stidgen one.
+        UseNameAsFileName : bool
+
+        /// Name of the generated file
         FileName : string option
 
         /// Enable generation of the protobuf-net attributes necessary for serialization
@@ -70,6 +74,7 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
             CastToUnderlying = Explicit
             EqualsUnderlying = false
             InternString = true
+            UseNameAsFileName = false
             FileName = Option.None
             ProtobufnetSerializable = false
         }
