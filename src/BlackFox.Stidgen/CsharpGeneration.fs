@@ -577,10 +577,16 @@ let private rootNodeToStringAsync node =
         return finalNode.GetText().ToString()
     }
 
+/// Transform a list of ID Types that should go into a file into the text
+/// content of this file
 let idTypesToStringAsync idType =
     idType
         |> makeRootNode
         |> rootNodeToStringAsync
 
+/// Transform a list of ID Types that should go into a file into the text
+/// content of this file
 let idTypesToString idType =
-    idType |> idTypesToStringAsync |> Async.RunSynchronously
+    idType
+        |> idTypesToStringAsync
+        |> Async.RunSynchronously

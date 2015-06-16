@@ -26,6 +26,7 @@ let private generateToFile configurationPath idType =
     let path = makePath configurationPath idType
     File.WriteAllText(path, text)
 
+/// Take the path of a '.stidgen' file and generate the associated ID Types
 let generateToFiles configurationPath =
     let configurationInfo = new FileInfo(configurationPath)
     let configuration = ConfigurationParser.loadFromFile configurationInfo

@@ -96,8 +96,13 @@ module private TextParser =
 
 type Configuration =
     {
+        /// Path of the '.stidgen' file
         Path : string option
+        
+        /// Types correctly readed
         Types : IdType list
+        
+        /// Parse errors
         Errors : ParseError list
     }
 
@@ -264,6 +269,8 @@ let loadFromStream (stream:Stream) =
     use reader = new StreamReader(stream)
     loadFromTextReader reader
 
+/// Load a '.stidgen' file content from a file into a Configuration
+/// data-structure
 let loadFromFile (file:FileInfo) =
     use reader = new FileStream(file.FullName, FileMode.Open)
     let configuration = loadFromStream reader
