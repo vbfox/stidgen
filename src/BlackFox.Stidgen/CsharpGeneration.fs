@@ -49,9 +49,12 @@ module private ProtobufNet =
         ifEnabled info generatedType
             <| addAttribute (makeAttribute (identifier "ProtoContract") [])
 
-    let addUsing info file =
-        ifEnabled info file
-            <| addUsings ["ProtoBuf"]
+    let addUsing infos file =
+        let enabledForOne = infos |> Seq.exists (fun i -> i.Id.ProtobufnetSerializable)
+        if enabledForOne then
+            file |> addUsings ["ProtoBuf"]
+        else
+            file
 
 let private makeValueField info =
     field info.UnderlyingTypeSyntax info.FieldName
@@ -498,21 +501,34 @@ let private topOfFileComments = @"----------------------
  </auto-generated>
 ----------------------"
 
-let makeRootNode idType = 
-    let info = makeInfo idType
-    let generatedClass = makeClass info
+let private makeFileLevelNodes (idTypes : ParsedInfo list) =
+    idTypes
+    |> Seq.groupBy (fun i -> i.Id.Namespace)
+    |> Seq.sortBy (fun (ns, _) -> ns)
+    |> Seq.collect(fun (ns, nsTypes) ->
+        let classNodes = nsTypes |> Seq.map(fun info ->
+                info |> makeClass :> MemberDeclarationSyntax
+            )
 
-    let rootMember =
-        if String.IsNullOrEmpty(idType.Namespace) then
-            generatedClass :> MemberDeclarationSyntax
+        if String.IsNullOrEmpty(ns) then
+            classNodes
         else
-            SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(idType.Namespace))
-                .AddMembers(generatedClass) :> MemberDeclarationSyntax
+            let nsNode =
+                SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(ns))
+                |> addMembers classNodes
+                :> MemberDeclarationSyntax
+
+            [nsNode] :> MemberDeclarationSyntax seq
+    )
+
+let makeRootNode (idTypes : IdType list) =
+    let infos = idTypes |> List.map makeInfo
+    let fileLevelNodes = infos |> makeFileLevelNodes
 
     emptyFile
         |> addUsings [ "System"; "System.CodeDom.Compiler" ]
-        |> ProtobufNet.addUsing info
-        |> addMember rootMember
+        |> ProtobufNet.addUsing infos
+        |> addMembers fileLevelNodes
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
 
 module DocumentGeneration =
@@ -561,10 +577,10 @@ let private rootNodeToStringAsync node =
         return finalNode.GetText().ToString()
     }
 
-let idTypeToStringAsync idType =
+let idTypesToStringAsync idType =
     idType
         |> makeRootNode
         |> rootNodeToStringAsync
 
-let idTypeToString idType =
-    idType |> idTypeToStringAsync |> Async.RunSynchronously
+let idTypesToString idType =
+    idType |> idTypesToStringAsync |> Async.RunSynchronously

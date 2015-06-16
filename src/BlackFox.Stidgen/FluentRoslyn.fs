@@ -75,6 +75,9 @@ let inline addBodyStatements statements (input:^T) =
 
 let inline addBodyStatement statement input =
     input |> addBodyStatements [|statement|] 
+
+let inline addMembers members (input:^T) =
+    (^T : (member AddMembers : MemberDeclarationSyntax array -> ^T) (input, members |> Seq.toArray))
    
 let inline addMember member' (input:^T) =
     (^T : (member AddMembers : MemberDeclarationSyntax array -> ^T) (input, [|member'|]))

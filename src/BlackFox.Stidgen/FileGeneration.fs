@@ -22,7 +22,7 @@ let private makePath configurationPath (idType:IdType) =
     Path.Combine(folder, fileName)
 
 let private generateToFile configurationPath idType =
-    let text = CsharpGeneration.idTypeToString idType
+    let text = CsharpGeneration.idTypesToString [idType]
     let path = makePath configurationPath idType
     File.WriteAllText(path, text)
 

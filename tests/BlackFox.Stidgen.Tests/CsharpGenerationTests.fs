@@ -5,6 +5,8 @@ open BlackFox.Stidgen.Description
 open NFluent
 open NUnit.Framework
 
+let idTypeToString x = idTypesToString [x]
+
 [<Test>]
 let ``string`` () =
     let idType = makeIdFromType<string> (fun i ->
