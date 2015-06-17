@@ -16,7 +16,9 @@ open Microsoft.CodeAnalysis.Simplification
 type private ParsedInfo =
     {
         Id : IdType
+        /// Can the underlying type be null (class or interface)
         CanBeNull : bool
+        /// Is the input value allowed to be null (Underlyng can be null and it is allowed)
         AllowNull : bool
         NamespaceProvided : bool
         UnderlyingTypeSyntax : TypeSyntax
@@ -352,6 +354,7 @@ module private Casts =
             |> addToUnderlyingTypeNullable info
             |> addFromUnderlyingTypeNullable info
 
+/// Implement IConvertible by calling System.Convert methods on the underlying type
 module private Convertible =
     open System.Reflection
     
@@ -420,6 +423,101 @@ module private Convertible =
         else
             classDeclaration
 
+module private ParseMethods =
+    open System.Reflection
+
+    let private getSomeMethod filter (info:ParsedInfo) =
+        info.Id.UnderlyingType.GetMethods() |> Seq.tryFind (filter info.Id.UnderlyingType)
+
+    let private isParseMethod (result:Type) (m:MethodInfo) =
+        let parameters = m.GetParameters()
+        m.Name = "Parse"
+            && m.IsStatic
+            && parameters.Length = 1
+            && parameters.[0].ParameterType = typeof<string>
+            && m.ReturnType = result
+        
+    let private getParseMethod = getSomeMethod isParseMethod
+
+    let private makeParseMethod (info:ParsedInfo) (parseMethod:MethodInfo) =
+        let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
+        let parse x = callStaticMethod parseMethod [x]
+        let body = ret (makeIdType (parse (identifier "value")))
+
+        SyntaxFactory.MethodDeclaration(info.GeneratedTypeSyntax, "Parse")
+        |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
+        |> addParameter "value" typesyntaxof<string>
+        |> withBody [body]
+
+    let private isTryParseMethod (result:Type) (m:MethodInfo) = 
+        let parameters = m.GetParameters()
+        m.Name = "TryParse"
+            && m.IsStatic
+            && parameters.Length = 2
+            && parameters.[0].ParameterType = typeof<string>
+            && parameters.[1].ParameterType.HasElementType // &result
+            && parameters.[1].ParameterType.GetElementType() = result
+            && parameters.[1].IsOut
+            && m.ReturnType = typeof<bool>
+            
+    let private getTryParseMethod = getSomeMethod isTryParseMethod
+
+    let private makeNullableTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
+        let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
+
+        let tryParse raw parsed = callStaticMethod' tryParseMethod [arg raw; outArg parsed]
+        let resultType = nullable info.GeneratedTypeSyntax
+        let body : StatementSyntax list = 
+            [
+                variable info.UnderlyingTypeSyntax "parsed" 
+                initializedVariable TypeSyntax.Bool "isValid" (tryParse (identifier "value") (identifier "parsed"));
+                ret (
+                    cond
+                        (identifier "isValid")
+                        (makeIdType (identifier "parsed"))
+                        (cast resultType Literal.Null)
+                )
+            ]
+
+        SyntaxFactory.MethodDeclaration(resultType, "TryParse")
+        |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
+        |> addParameter "value" typesyntaxof<string>
+        |> withBody body
+
+    let private makeStandardTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
+        let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
+
+        let tryParse raw parsed = callStaticMethod' tryParseMethod [arg raw; outArg parsed]
+        let body : StatementSyntax list = 
+            [
+                variable info.UnderlyingTypeSyntax "parsed"
+                initializedVariable TypeSyntax.Bool "isValid" (tryParse (identifier "value") (identifier "parsed"))
+                set (identifier "result") (
+                    cond
+                        (identifier "isValid")
+                        (makeIdType (identifier "parsed"))
+                        (default' info.GeneratedTypeSyntax)
+                )
+                ret (identifier "isValid")
+            ]
+        SyntaxFactory.MethodDeclaration(typesyntaxof<bool>, "TryParse")
+        |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
+        |> addParameter "value" typesyntaxof<string>
+        |> addOutParameter "result" info.GeneratedTypeSyntax
+        |> withBody body
+
+    let addPotential info extractor memberMaker (decl:StructDeclarationSyntax) =
+        match extractor info with
+        | Some(extracted) -> decl |> addMember (memberMaker info extracted)
+        | Option.None -> decl
+
+    let addParseMethods info (decl : StructDeclarationSyntax) = 
+        decl
+            |> addPotential info getParseMethod makeParseMethod
+            |> addPotential info getTryParseMethod makeStandardTryParseMethod
+            |?> (not info.CanBeNull, addPotential info getTryParseMethod makeNullableTryParseMethod)
+
+/// Add the [GeneratedCodeAttribute] for each generated member
 module GeneratedCodeAttribute = 
     // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
     let private nameSyntax = identifier "GeneratedCode"
@@ -472,6 +570,7 @@ let private makeClass info =
         |> Equality.addOperators info
         |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
         |> Casts.addAll info
+        |> ParseMethods.addParseMethods info
         |> Convertible.addIConvertibleMembers info
         |> GeneratedCodeAttribute.addToAllMembers
 

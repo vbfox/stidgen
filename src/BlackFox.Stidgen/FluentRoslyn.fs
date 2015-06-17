@@ -62,9 +62,15 @@ let inline withSemicolon (input:^T) =
     let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
     (^T : (member WithSemicolonToken : SyntaxToken -> ^T) (input, token))
 
-let inline addParameter name parameterType (input:^T) =
-    let parameter = SyntaxFactory.Parameter(SyntaxFactory.Identifier(name)).WithType(parameterType)
+let inline addParameter' name parameterType modifiers (input:^T) =
+    let parameter =
+        SyntaxFactory.Parameter(SyntaxFactory.Identifier(name)).WithType(parameterType)
+        |> addModifiers modifiers
     (^T : (member AddParameterListParameters : ParameterSyntax array -> ^T) (input, [|parameter|]))
+
+let inline addParameter name parameterType = addParameter' name parameterType []
+let inline addOutParameter name parameterType = addParameter' name parameterType [SyntaxKind.OutKeyword]
+let inline addRefParameter name parameterType = addParameter' name parameterType [SyntaxKind.RefKeyword]
 
 let inline addArgument expression (input:^T) =
     let argument = SyntaxFactory.Argument(expression)
@@ -85,7 +91,7 @@ let inline addMember member' (input:^T) =
 let inline addStatement statement (input:^T) =
     (^T : (member AddStatements : StatementSyntax array -> ^T) (input, [|statement|]))
 
-let inline withBody (statements: StatementSyntax array) (input:^T) =
+let inline withBody (statements: StatementSyntax seq) (input:^T) =
     let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
     (^T : (member WithBody : BlockSyntax -> ^T) (input, block))
 
@@ -180,16 +186,25 @@ let objectCreation createdType argumentExpressions =
     SyntaxFactory.ObjectCreationExpression(createdType)
         .WithArgumentList(argList)
 
-/// expression(argumentExpressions);
+let statement (expr:#ExpressionSyntax) = SyntaxFactory.ExpressionStatement(expr)
+
+let arg x = SyntaxFactory.Argument(x)
+let outArg x = SyntaxFactory.Argument(null, SyntaxFactory.Token(SyntaxKind.OutKeyword), x)
+let refArg x = SyntaxFactory.Argument(null, SyntaxFactory.Token(SyntaxKind.RefKeyword), x)
+
+/// expression(args)
+let invocation' (expression : ExpressionSyntax) (args : ArgumentSyntax seq) =
+    let argList = SyntaxFactory.ArgumentList(args |> toSeparatedList)
+    SyntaxFactory.InvocationExpression(expression).WithArgumentList(argList)
+
+/// expression(argumentExpressions)
 let invocation (expression : ExpressionSyntax) (argumentExpressions : ExpressionSyntax seq) =
     let args = argumentExpressions |> Seq.map (fun a -> SyntaxFactory.Argument(a))
-    let argList = SyntaxFactory.ArgumentList(args |> toSeparatedList)
-
-    SyntaxFactory.InvocationExpression(expression).WithArgumentList(argList)
+    invocation' expression args
 
 /// expression(argumentExpressions);
 let invocationStatement (expression : ExpressionSyntax) (argumentExpressions : ExpressionSyntax seq) =
-    SyntaxFactory.ExpressionStatement(invocation expression argumentExpressions)
+    invocation expression argumentExpressions |> statement
 
 let private variable' ``type`` (name:string) (value: ExpressionSyntax option) =
     let declarator = SyntaxFactory.VariableDeclarator(name)
@@ -201,16 +216,19 @@ let private variable' ``type`` (name:string) (value: ExpressionSyntax option) =
     SyntaxFactory.VariableDeclaration(``type``, declarators)
 
 /// Type name = value;
-let initializedVariable ``type`` name value = variable' ``type`` name (Some(value))
+let initializedVariable ``type`` name value =
+    SyntaxFactory.LocalDeclarationStatement(variable' ``type`` name (Some(value)))
 
 /// Type name;
-let variable ``type`` name = variable' ``type`` name None
+let variable ``type`` name =
+    SyntaxFactory.LocalDeclarationStatement(variable' ``type`` name None)
 
 /// Type name = value;
-let field ``type`` name = SyntaxFactory.FieldDeclaration(variable ``type`` name)
+let field ``type`` name = SyntaxFactory.FieldDeclaration(variable' ``type`` name None)
 
 /// Type name = value;
-let initializedField ``type`` name value = SyntaxFactory.FieldDeclaration(initializedVariable ``type`` name value)
+let initializedField ``type`` name value =
+    SyntaxFactory.FieldDeclaration(variable' ``type`` name (Some(value)))
 
 /// return expression;
 let ret expression = SyntaxFactory.ReturnStatement(expression)
@@ -260,6 +278,8 @@ let throw expression = SyntaxFactory.ThrowStatement(expression)
 /// throw exceptionType(args);
 let throwException exceptionType args =
     throw (objectCreation exceptionType args)
+
+let default' typeSyntax = SyntaxFactory.DefaultExpression(typeSyntax)
 
 /// An empty file ("compilation unit")
 let emptyFile = SyntaxFactory.CompilationUnit()
@@ -329,3 +349,20 @@ let throwIfArgumentNull argName =
     if'
         (equals (identifier argName) (Literal.Null))
         (block [ throwException typesyntaxof<System.ArgumentNullException> [|Literal.String argName|] ])
+
+[<AutoOpen>]
+module Reflection =
+    open System.Reflection
+    
+    /// Create an ExpressionSyntax representing an access to a static method
+    let staticMethodAccess (m:MethodInfo) =
+        let declaringType = NameSyntax.FromType(m.DeclaringType)
+        declaringType |> dottedMemberAccess [m.Name]
+    
+    /// Invoke a static method
+    let callStaticMethod' (m:MethodInfo) args =
+        invocation' (staticMethodAccess m) args
+        
+    /// Invoke a static method
+    let callStaticMethod (m:MethodInfo) args =
+        invocation (staticMethodAccess m) args
