@@ -1,3 +1,11 @@
+### New in 0.4.0
+* Static methods 'Parse' and 'TryParse' are lifted
+* A variant of 'TryParse' returning a nullable instead of using an out
+  parameter is generated if TryParse exists.
+* Types can now be placed in the same file and the default is to place them
+  all in a file named as the .stidgen file but with a .Generated.cs extension.
+  The previous behavior is available by specifying 'UseNameAsFileName: true'
+
 ### New in 0.3.0
 * Add casts to and from nullable
 * Add an option to enable protobuf-net serialization
