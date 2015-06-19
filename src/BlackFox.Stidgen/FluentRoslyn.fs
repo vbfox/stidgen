@@ -370,15 +370,21 @@ module FromReflection =
     let callStaticMethod (m:MethodInfo) args =
         invocation (staticMethodAccess m) args
 
-    let getParametersForCall (parameters : ParameterInfo seq) =
-        parameters |> Seq.map(fun p -> identifier p.Name :> ExpressionSyntax)
+    let getArgument (p:ParameterInfo) =
+        let name = identifier p.Name
+        match (p.IsOut, p.ParameterType.IsByRef) with
+        | (true, _) -> outArg name
+        | (false, true) -> refArg name
+        | (false, false) -> arg name
+
+    let getArgumentsForCall (m:MethodInfo) =
+        m.GetParameters() |> Seq.map getArgument
 
     let getModifiers (p:ParameterInfo) =
         match (p.IsOut, p.ParameterType.IsByRef) with
-        | (true, false) -> [SyntaxKind.OutKeyword]
+        | (true, _) -> [SyntaxKind.OutKeyword]
         | (false, true) -> [SyntaxKind.RefKeyword]
         | (false, false) -> []
-        | _ -> failwith "Can't exist in C#"
 
     let parameterInfoToParameter (p:ParameterInfo) = 
         SyntaxFactory.Parameter(SyntaxFactory.Identifier(p.Name))

@@ -423,6 +423,8 @@ module private Convertible =
         else
             classDeclaration
 
+/// Transform all 'Parse' and 'TryParse' static methods from the underlying type to the ID type.
+/// Also generate a 'TryParse' returning a Nullable<T>
 module private ParseMethods =
     open System.Reflection
     open FromReflection
@@ -435,11 +437,11 @@ module private ParseMethods =
             && parameters.[0].ParameterType = typeof<string>
             && m.ReturnType = result
         
+    let makeIdType x info = objectCreation info.GeneratedTypeSyntax [x]
+
     let private makeParseMethod (info:ParsedInfo) (parseMethod:MethodInfo) =
-        let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
-        
-        let parse = callStaticMethod parseMethod (getParametersForCall (parseMethod.GetParameters()))
-        let body = ret (makeIdType parse)
+        let parse = callStaticMethod' parseMethod (getArgumentsForCall parseMethod)
+        let body = ret (makeIdType parse info)
 
         SyntaxFactory.MethodDeclaration(info.GeneratedTypeSyntax, "Parse")
         |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
@@ -451,55 +453,63 @@ module private ParseMethods =
         let lastParamId = parameters.Length - 1
         m.Name = "TryParse"
             && m.IsStatic
-            && parameters.Length = 2
+            && parameters.Length >= 2
             && parameters.[0].ParameterType = typeof<string>
             && parameters.[lastParamId].ParameterType.HasElementType // &result
             && parameters.[lastParamId].ParameterType.GetElementType() = result
             && parameters.[lastParamId].IsOut
             && m.ReturnType = typeof<bool>
 
-    let private makeNullableTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
-        let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
+    let private callTryParse (m:MethodInfo) identifierName =
+        let rawArgs = getArgumentsForCall m |> List.ofSeq |> List.rev
+        let outArg = rawArgs.Head.WithExpression(identifier identifierName)
+        let finalArgs = (outArg :: rawArgs.Tail) |> List.rev
+        callStaticMethod' m finalArgs
 
-        let tryParse raw parsed = callStaticMethod' tryParseMethod [arg raw; outArg parsed]
+    let private makeNullableTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
         let resultType = nullable info.GeneratedTypeSyntax
         let body : StatementSyntax list = 
             [
                 variable info.UnderlyingTypeSyntax "parsed" 
-                initializedVariable TypeSyntax.Bool "isValid" (tryParse (identifier "value") (identifier "parsed"));
+                initializedVariable TypeSyntax.Bool "isValid" (callTryParse tryParseMethod "parsed");
                 ret (
                     cond
                         (identifier "isValid")
-                        (makeIdType (identifier "parsed"))
+                        (makeIdType (identifier "parsed") info)
                         (cast resultType Literal.Null)
                 )
             ]
 
+        let parameterCount = tryParseMethod.GetParameters().Length - 1
+        let parameters = getParametersForDeclaration tryParseMethod |> Seq.take(parameterCount)
+
         SyntaxFactory.MethodDeclaration(resultType, "TryParse")
         |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
-        |> addParameter "value" typesyntaxof<string>
+        |> addParameters' parameters
         |> withBody body
 
     let private makeStandardTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
-        let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
-
-        let tryParse raw parsed = callStaticMethod' tryParseMethod [arg raw; outArg parsed]
+        let resultArgName = (tryParseMethod.GetParameters() |> Seq.last).Name
         let body : StatementSyntax list = 
             [
                 variable info.UnderlyingTypeSyntax "parsed"
-                initializedVariable TypeSyntax.Bool "isValid" (tryParse (identifier "value") (identifier "parsed"))
-                set (identifier "result") (
+                initializedVariable TypeSyntax.Bool "isValid" (callTryParse tryParseMethod "parsed")
+                set (identifier resultArgName) (
                     cond
                         (identifier "isValid")
-                        (makeIdType (identifier "parsed"))
+                        (makeIdType (identifier "parsed") info)
                         (default' info.GeneratedTypeSyntax)
                 )
                 ret (identifier "isValid")
             ]
+
+        let parameters = getParametersForDeclaration tryParseMethod |> List.ofSeq |> List.rev
+        let outArg = parameters.Head.WithType(info.GeneratedTypeSyntax)
+        let parameters = (outArg :: parameters.Tail) |> List.rev
+
         SyntaxFactory.MethodDeclaration(typesyntaxof<bool>, "TryParse")
         |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
-        |> addParameter "value" typesyntaxof<string>
-        |> addOutParameter "result" info.GeneratedTypeSyntax
+        |> addParameters' parameters
         |> withBody body
 
     let private getSomeMethods filter (info:ParsedInfo) =
@@ -511,13 +521,8 @@ module private ParseMethods =
              [
                 make isParseMethod makeParseMethod
                 make isTryParseMethod makeStandardTryParseMethod
+                make isTryParseMethod makeNullableTryParseMethod
              ]
-        
-        let members =
-            if info.CanBeNull then
-                members
-            else
-                (make isTryParseMethod makeNullableTryParseMethod) :: members
 
         let members = members |> Seq.collect id |> Seq.map (fun m -> m :> MemberDeclarationSyntax)
 
