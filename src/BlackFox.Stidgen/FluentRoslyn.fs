@@ -62,11 +62,15 @@ let inline withSemicolon (input:^T) =
     let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
     (^T : (member WithSemicolonToken : SyntaxToken -> ^T) (input, token))
 
-let inline addParameter' name parameterType modifiers (input:^T) =
+let inline addParameters' parameters (input:^T) =
+    (^T : (member AddParameterListParameters : ParameterSyntax array -> ^T) (input, parameters |> Seq.toArray))
+
+let inline addParameter' name parameterType modifiers input =
     let parameter =
         SyntaxFactory.Parameter(SyntaxFactory.Identifier(name)).WithType(parameterType)
         |> addModifiers modifiers
-    (^T : (member AddParameterListParameters : ParameterSyntax array -> ^T) (input, [|parameter|]))
+
+    input |> addParameters' [parameter]
 
 let inline addParameter name parameterType = addParameter' name parameterType []
 let inline addOutParameter name parameterType = addParameter' name parameterType [SyntaxKind.OutKeyword]
@@ -350,8 +354,7 @@ let throwIfArgumentNull argName =
         (equals (identifier argName) (Literal.Null))
         (block [ throwException typesyntaxof<System.ArgumentNullException> [|Literal.String argName|] ])
 
-[<AutoOpen>]
-module Reflection =
+module FromReflection =
     open System.Reflection
     
     /// Create an ExpressionSyntax representing an access to a static method
@@ -366,3 +369,21 @@ module Reflection =
     /// Invoke a static method
     let callStaticMethod (m:MethodInfo) args =
         invocation (staticMethodAccess m) args
+
+    let getParametersForCall (parameters : ParameterInfo seq) =
+        parameters |> Seq.map(fun p -> identifier p.Name :> ExpressionSyntax)
+
+    let getModifiers (p:ParameterInfo) =
+        match (p.IsOut, p.ParameterType.IsByRef) with
+        | (true, false) -> [SyntaxKind.OutKeyword]
+        | (false, true) -> [SyntaxKind.RefKeyword]
+        | (false, false) -> []
+        | _ -> failwith "Can't exist in C#"
+
+    let parameterInfoToParameter (p:ParameterInfo) = 
+        SyntaxFactory.Parameter(SyntaxFactory.Identifier(p.Name))
+            .WithType(NameSyntax.FromType(p.ParameterType))
+            |> addModifiers (getModifiers p)
+
+    let getParametersForDeclaration (m:MethodInfo) = 
+        m.GetParameters() |> Seq.map(parameterInfoToParameter)

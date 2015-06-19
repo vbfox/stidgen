@@ -425,42 +425,38 @@ module private Convertible =
 
 module private ParseMethods =
     open System.Reflection
-
-    let private getSomeMethod filter (info:ParsedInfo) =
-        info.Id.UnderlyingType.GetMethods() |> Seq.tryFind (filter info.Id.UnderlyingType)
+    open FromReflection
 
     let private isParseMethod (result:Type) (m:MethodInfo) =
         let parameters = m.GetParameters()
         m.Name = "Parse"
             && m.IsStatic
-            && parameters.Length = 1
+            && parameters.Length >= 1
             && parameters.[0].ParameterType = typeof<string>
             && m.ReturnType = result
         
-    let private getParseMethod = getSomeMethod isParseMethod
-
     let private makeParseMethod (info:ParsedInfo) (parseMethod:MethodInfo) =
         let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
-        let parse x = callStaticMethod parseMethod [x]
-        let body = ret (makeIdType (parse (identifier "value")))
+        
+        let parse = callStaticMethod parseMethod (getParametersForCall (parseMethod.GetParameters()))
+        let body = ret (makeIdType parse)
 
         SyntaxFactory.MethodDeclaration(info.GeneratedTypeSyntax, "Parse")
         |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
-        |> addParameter "value" typesyntaxof<string>
+        |> addParameters' (getParametersForDeclaration parseMethod)
         |> withBody [body]
 
     let private isTryParseMethod (result:Type) (m:MethodInfo) = 
         let parameters = m.GetParameters()
+        let lastParamId = parameters.Length - 1
         m.Name = "TryParse"
             && m.IsStatic
             && parameters.Length = 2
             && parameters.[0].ParameterType = typeof<string>
-            && parameters.[1].ParameterType.HasElementType // &result
-            && parameters.[1].ParameterType.GetElementType() = result
-            && parameters.[1].IsOut
+            && parameters.[lastParamId].ParameterType.HasElementType // &result
+            && parameters.[lastParamId].ParameterType.GetElementType() = result
+            && parameters.[lastParamId].IsOut
             && m.ReturnType = typeof<bool>
-            
-    let private getTryParseMethod = getSomeMethod isTryParseMethod
 
     let private makeNullableTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
         let makeIdType x = objectCreation info.GeneratedTypeSyntax [x]
@@ -506,17 +502,27 @@ module private ParseMethods =
         |> addOutParameter "result" info.GeneratedTypeSyntax
         |> withBody body
 
-    let addPotential info extractor memberMaker (decl:StructDeclarationSyntax) =
-        match extractor info with
-        | Some(extracted) -> decl |> addMember (memberMaker info extracted)
-        | Option.None -> decl
+    let private getSomeMethods filter (info:ParsedInfo) =
+        info.Id.UnderlyingType.GetMethods() |> Seq.filter (filter info.Id.UnderlyingType)
 
-    let addParseMethods info (decl : StructDeclarationSyntax) = 
-        decl
-            |> addPotential info getParseMethod makeParseMethod
-            |> addPotential info getTryParseMethod makeStandardTryParseMethod
-            |?> (not info.CanBeNull, addPotential info getTryParseMethod makeNullableTryParseMethod)
+    let addParseMethods info (decl : StructDeclarationSyntax) =
+        let make filter makeMethod = getSomeMethods filter info |> Seq.map(makeMethod info) 
+        let members = 
+             [
+                make isParseMethod makeParseMethod
+                make isTryParseMethod makeStandardTryParseMethod
+             ]
+        
+        let members =
+            if info.CanBeNull then
+                members
+            else
+                (make isTryParseMethod makeNullableTryParseMethod) :: members
 
+        let members = members |> Seq.collect id |> Seq.map (fun m -> m :> MemberDeclarationSyntax)
+
+        decl |> addMembers members
+ 
 /// Add the [GeneratedCodeAttribute] for each generated member
 module GeneratedCodeAttribute = 
     // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
