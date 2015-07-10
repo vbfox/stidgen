@@ -1,8 +1,6 @@
 ﻿module BlackFox.Stidgen.CsharpGeneration
 
 open System
-open System.IO
-open System.Text
 open BlackFox.Stidgen.Description
 open BlackFox.Stidgen.FluentRoslyn
 open BlackFox.Stidgen.FluentRoslyn.Operators
@@ -34,7 +32,6 @@ type private ParsedInfo =
 let private value info x = x :> ExpressionSyntax |> info.ValueAccess
 
 let private (|?>) x (c, f) = if c then f x else x
-let private (|??>) x (c, f, g) = if c then f x else g x
 
 let private visibilityToKeyword = function
     | Public -> SyntaxKind.PublicKeyword
@@ -182,10 +179,6 @@ module private Equality =
         |> addBodyStatement body
 
     let makeEquals info =
-        let returnIfNull = info |> makeIfValueNull (fun block ->
-            block |> addStatement (ret (Literal.Int 0))
-            )
-
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
 
@@ -346,13 +339,19 @@ module private Casts =
             info.Id.CastFromUnderlying
             maker
 
+    let isNullable (t:Type) =
+        t.IsGenericType
+            && t.GetGenericTypeDefinition() = typeof<Nullable<int>>.GetGenericTypeDefinition()
+
     /// Add all casts to the type
     let addAll info generatedType =
+        let underlyingIsNullable = isNullable info.Id.UnderlyingType
+
         generatedType
             |> addToUnderlyingType info
             |> addFromUnderlyingType info
-            |> addToUnderlyingTypeNullable info
-            |> addFromUnderlyingTypeNullable info
+            |?> (not underlyingIsNullable, addToUnderlyingTypeNullable info)
+            |?> (not underlyingIsNullable, addFromUnderlyingTypeNullable info)
 
 /// Implement IConvertible by calling System.Convert methods on the underlying type
 module private Convertible =
@@ -596,7 +595,7 @@ let private makeInfo idType =
         CanBeNull = idType.UnderlyingType.IsClass || idType.UnderlyingType.IsInterface
         AllowNull = idType.AllowNull
         NamespaceProvided = namespaceProvided
-        UnderlyingTypeSyntax = SyntaxFactory.ParseTypeName(idType.UnderlyingType.FullName)
+        UnderlyingTypeSyntax = NameSyntax.FromType(idType.UnderlyingType)
         GeneratedTypeSyntax  = SyntaxFactory.ParseTypeName(idType.Name)
         ThisValueMemberAccess = thisMemberAccess fieldName
         ValueAccess = (fun expr -> expr |> dottedMemberAccess [fieldName])
@@ -636,7 +635,7 @@ let makeRootNode (idTypes : IdType seq) =
     let fileLevelNodes = infos |> makeFileLevelNodes
 
     emptyFile
-        |> addUsings [ "System"; "System.CodeDom.Compiler" ]
+        |> addUsings [ "System"; "System.CodeDom.Compiler" (*GeneratedCodeAttribute*)]
         |> ProtobufNet.addUsing infos
         |> addMembers fileLevelNodes
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
