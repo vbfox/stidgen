@@ -5,6 +5,11 @@
 * Types can now be placed in the same file and the default is to place them
   all in a file named as the .stidgen file but with a .Generated.cs extension.
   The previous behavior is available by specifying 'UseNameAsFileName: true'
+* Added a more complete set of unit tests
+* BUGFIX: Generic underlying types weren't correctly handled, the name was
+  the FullName of the Type instead of C# code.
+* BUGFIX: Casts to and from nullable were still generated for Nullable<T>
+  underlying resulting in invalid code.
 
 ### New in 0.3.0
 * Add casts to and from nullable
