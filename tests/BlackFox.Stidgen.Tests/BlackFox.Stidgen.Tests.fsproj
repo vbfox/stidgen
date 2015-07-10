@@ -58,6 +58,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Content Include="App.config" />
     <None Include="paket.references" />
+    <Compile Include="CsharpCodeTesting.fs" />
     <Compile Include="CsharpGenerationTests.fs" />
     <Compile Include="ConfigurationParserTests.fs" />
   </ItemGroup>

@@ -1,187 +1,159 @@
 ﻿module BlackFox.Stidgen.CsharpGenerationTests
 
+open BlackFox.Stidgen.CsharpCodeTesting
 open BlackFox.Stidgen.CsharpGeneration
 open BlackFox.Stidgen.Description
 open NFluent
 open NUnit.Framework
-
-let idTypeToString x = idTypesToString [x]
-
-[<Test>]
-let ``string`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with
-                Namespace = "BlackFox.Tests"
-                AllowNull = false
-                CastFromUnderlying = None
-                CastToUnderlying = None
-            }
-        )
-
-    let generated = idType |> idTypeToString
-    let expected = """using System;
-
-namespace BlackFox.Tests
-{
-    public partial class Id
-    {
-        public string Value { get; private set; }
-
-        public Id(string value)
-        {
-            if (value == null)
-            {
-                throw new ArgumentNullException("value");
-            }
-
-            Value = value;
-        }
-
-        public override string ToString()
-        {
-            return Value.ToString();
-        }
-
-        public override int GetHashCode()
-        {
-            return Value.GetHashCode();
-        }
-    }
-}"""
-    Check.That(generated).IsEqualTo<string>(expected) |> ignore
+open System
 
 [<Test>]
-let ``string allow null`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with
-                Namespace = "BlackFox.Tests"
-                AllowNull = true
-                CastFromUnderlying = None
-                CastToUnderlying = None
-            }
-        )
-
-    let generated = idType |> idTypeToString
-    let expected = """using System;
-
-namespace BlackFox.Tests
-{
-    public partial class Id
-    {
-        public string Value { get; private set; }
-
-        public Id(string value)
-        {
-            Value = value;
-        }
-
-        public override string ToString()
-        {
-            if (Value == null)
-            {
-                return "";
-            }
-
-            return Value.ToString();
-        }
-
-        public override int GetHashCode()
-        {
-            if (Value == null)
-            {
-                return 0;
-            }
-
-            return Value.GetHashCode();
-        }
-    }
-}"""
-    Check.That(generated).IsEqualTo<string>(expected) |> ignore
+let ``Compile for Int32`` () = runGeneratedTest (makeIdFromType<int> id) ""
 
 [<Test>]
-let ``no namespace`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with
-                Namespace = ""
-                AllowNull = false
-                CastFromUnderlying = None
-                CastToUnderlying = None
-            }
-        )
-
-    let generated = idType |> idTypeToString
-    let expected = """using System;
-
-public partial class Id
-{
-    public string Value { get; private set; }
-
-    public Id(string value)
-    {
-        if (value == null)
-        {
-            throw new ArgumentNullException("value");
-        }
-
-        Value = value;
-    }
-
-    public override string ToString()
-    {
-        return Value.ToString();
-    }
-
-    public override int GetHashCode()
-    {
-        return Value.GetHashCode();
-    }
-}"""
-    Check.That(generated).IsEqualTo<string>(expected) |> ignore
+let ``Compile for Nullable Int32`` () = runGeneratedTest (makeIdFromType<Nullable<int>> id) ""
 
 [<Test>]
-let ``casts`` () =
+let ``Compile for Int64`` () = runGeneratedTest (makeIdFromType<int64> id) ""
+
+[<Test>]
+let ``Compile for String`` () = runGeneratedTest (makeIdFromType<string> id) ""
+
+[<Test>]
+let ``Compile for Guid`` () = runGeneratedTest (makeIdFromType<Guid> id) ""
+
+[<Test>]
+let ``Compile for Exception`` () = runGeneratedTest (makeIdFromType<Exception> id) ""
+
+[<Test>]
+let ``Default property name`` () =
+    let idType = makeIdFromType<string> id
+
+    runGeneratedTest idType @"
+    var instance = new Id(""test"");
+    Check.That(instance.Value).IsEqualTo(""test"");
+    "
+
+[<Test>]
+let ``Custom property name`` () =
     let idType = makeIdFromType<string> (fun i ->
-            { i with
-                CastFromUnderlying = Implicit
-                CastToUnderlying = Explicit
-            }
+            { i with ValueProperty = "SomeName" }
         )
 
-    let generated = idType |> idTypeToString
-    let expected = """using System;
+    runGeneratedTest idType @"
+    var instance = new Id(""test"");
+    Check.That(instance.SomeName).IsEqualTo(""test"");
+    "
 
-public partial class Id
-{
-    public string Value { get; private set; }
+[<Test>]
+let ``Custom type name`` () =
+    let idType = makeIdFromType<string> (fun i ->
+            { i with Name = "SomeName" }
+        )
 
-    public Id(string value)
-    {
-        if (value == null)
-        {
-            throw new ArgumentNullException("value");
-        }
+    runGeneratedTest idType @"
+    var instance = new SomeName(""test"");
+    Check.That(instance.Value).IsEqualTo(""test"");
+    "
 
-        Value = value;
-    }
+[<Test>]
+let ``Custom simple namespace`` () =
+    let idType = makeIdFromType<string> (fun i ->
+            { i with Namespace = "SomeNs" }
+        )
 
-    public override string ToString()
-    {
-        return Value.ToString();
-    }
+    runGeneratedTest idType @"
+    var instance = new SomeNs.Id(""test"");
+    Check.That(instance.Value).IsEqualTo(""test"");
+    "
 
-    public override int GetHashCode()
-    {
-        return Value.GetHashCode();
-    }
+[<Test>]
+let ``Custom complex namespace`` () =
+    let idType = makeIdFromType<string> (fun i ->
+            { i with Namespace = "Some.Ns.For.Tests" }
+        )
 
-    public static implicit operator Id(string x)
-    {
-        return new Id(x);
-    }
+    runGeneratedTest idType @"
+    var instance = new Some.Ns.For.Tests.Id(""test"");
+    Check.That(instance.Value).IsEqualTo(""test"");
+    "
 
-    public static explicit operator string (Id x)
-    {
-        return x.Value;
-    }
-}"""
-    Check.That(generated).IsEqualTo<string>(expected) |> ignore
+[<Test>]
+let ``Null string throw`` () =
+    let idType = makeIdFromType<string> id
+
+    Check.ThatCode(fun () -> runGeneratedTest idType @"new Id(null);")
+        .Throws<ArgumentNullException>() |> ignore
+
+[<Test>]
+let ``Null string can be allowed`` () =
+    let idType = makeIdFromType<string> (fun i ->
+            { i with AllowNull = true }
+        )
+
+    let test () =
+        runGeneratedTest idType @"
+        var instance = new Id(null);
+        Check.That(instance.Value).IsEqualTo(null);
+        "
+
+    Check.ThatCode(test).DoesNotThrow() |> ignore
+
+[<Test>]
+let ``GetHashCode is lifted`` () =
+    let idType = makeIdFromType<string> id
+
+    runGeneratedTest idType @"
+    Check.That(new Id(""Test"").Value.GetHashCode()).IsEqualTo(""Test"".GetHashCode());
+    Check.That(new Id(""42"").Value.GetHashCode()).IsEqualTo(""42"".GetHashCode());
+    "
+
+[<Test>]
+let ``GetHashCode works with null`` () =
+    let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true })
+
+    let test () =
+        runGeneratedTest idType @"
+        var instance = new Id(null);
+        GC.KeepAlive(instance.GetHashCode());
+        "
+
+    Check.ThatCode(test).DoesNotThrow() |> ignore
+
+[<Test>]
+let ``Value is interned`` () =
+    let idType = makeIdFromType<string> id
+
+    runGeneratedTest idType @"
+    var instance = new Id(""Some_string_"");
+    Check.That(string.IsInterned(instance.Value)).IsNotNull();
+    "
+
+[<Test>]
+let ``ToString return the same string`` () =
+    let idType = makeIdFromType<string> id
+
+    runGeneratedTest idType @"
+    var str = string.Intern(""Test"");
+    var instance = new Id(str);
+    Check.That(instance.ToString()).IsSameReferenceThan(str);
+    "
+
+[<Test>]
+let ``Null ToString is empty string`` () =
+    let idType = makeIdFromType<Nullable<int>> id
+    
+    runGeneratedTest idType @"
+    var instance = new Id(null);
+    Check.That(instance.ToString()).IsEqualTo("""");
+    "
+
+[<Test>]
+let ``ToString is lifted`` () =
+    let idType = makeIdFromType<Guid> id
+
+    runGeneratedTest idType @"
+    var guid = Guid.NewGuid();
+    var instance = new Id(guid);
+    Check.That(instance.ToString()).IsEqualTo(guid.ToString());
+    "
