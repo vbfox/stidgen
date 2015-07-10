@@ -129,13 +129,11 @@ Target "Paket" <| fun _ -> trace "Paket should have been executed"
     ==> "AssemblyInfo"
     ==> "Build"
     ==> "CopyBinaries"
+    ==> "RunTests"
     ==> "Default"
 
 "Default"
     ==> "NuGet"
     ==> "PublishNuget"
-
-"CopyBinaries"
-    ==> "RunTests"
 
 RunTargetOrDefault "Default"
