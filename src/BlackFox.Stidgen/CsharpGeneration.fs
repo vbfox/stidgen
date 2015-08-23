@@ -641,13 +641,21 @@ let makeRootNode (idTypes : IdType seq) =
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
 
 module DocumentGeneration =
+    open System.Reflection
 
-    let private makeDocument (rootNode:SyntaxNode) =
+    let private makeDocument (assemblies: Assembly seq) (rootNode:SyntaxNode) =
         let workspace = new AdhocWorkspace()
         let project = workspace.AddProject("MyProject", LanguageNames.CSharp)
 
-        let mscorlib = PortableExecutableReference.CreateFromFile(typedefof<obj>.Assembly.Location)
-        let project = project.AddMetadataReference(mscorlib)
+        let project =
+            assemblies
+            |> Seq.toList
+            |> List.append [ typedefof<obj>.Assembly ]
+            |> List.map (fun a -> a.Location)
+            |> List.distinct
+            |> List.map (fun f -> PortableExecutableReference.CreateFromFile(f))
+            |> List.fold (fun (p:Project) ref -> p.AddMetadataReference(ref)) project 
+
         workspace.TryApplyChanges(project.Solution) |> ignore
 
         project.AddDocument("GeneratedId.cs", rootNode)
@@ -670,17 +678,17 @@ module DocumentGeneration =
             return! !! Formatter.FormatAsync(newDoc)
         }
 
-    let makeClean node =
+    let makeClean assemblies node =
         async {
             return! node
-                |> makeDocument
+                |> makeDocument assemblies
                 |> simplifyDocumentAsync
                 |!> formatDocumentAsync
         }
 
-let private rootNodeToStringAsync node =
+let private rootNodeToStringAsync assemblies node =
     async {
-        let! document = DocumentGeneration.makeClean node
+        let! document = DocumentGeneration.makeClean assemblies node
         let! finalNode = !! document.GetSyntaxRootAsync()
 
         return finalNode.GetText().ToString()
@@ -689,9 +697,10 @@ let private rootNodeToStringAsync node =
 /// Transform a list of ID Types that should go into a file into the text
 /// content of this file
 let idTypesToStringAsync idTypes =
+    let assemblies = idTypes |> Seq.map (fun t -> t.UnderlyingType.Assembly)
     idTypes
         |> makeRootNode
-        |> rootNodeToStringAsync
+        |> rootNodeToStringAsync assemblies
 
 /// Transform a list of ID Types that should go into a file into the text
 /// content of this file
