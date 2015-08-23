@@ -8,6 +8,7 @@
 * Added a more complete set of unit tests.
 * Multiple files can now be passed to the command line.
 * The command line now support globs like "**\*.stidgen".
+* Generated files and types are now shown on the console.
 * BUGFIX: Generic underlying types weren't correctly handled, the name was
   the FullName of the Type instead of C# code.
 * BUGFIX: Casts to and from nullable were still generated for Nullable<T>
