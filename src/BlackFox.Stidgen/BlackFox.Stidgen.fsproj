@@ -66,6 +66,7 @@
     <Compile Include="FirstChar.fs" />
     <Compile Include="CsharpGeneration.fs" />
     <Compile Include="FileGeneration.fs" />
+    <Compile Include="Globbing.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <None Include="paket.template" />
