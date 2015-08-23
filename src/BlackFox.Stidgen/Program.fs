@@ -1,38 +1,39 @@
 ﻿module BlackFox.Stidgen.Program
 
-type runResult = (string  *ConfigurationParser.ParseError list) list
+type runResults = FileGeneration.GenerationResult list
 
-let run (fileGlobs : string seq) : runResult =
+let run (fileGlobs : string seq) : runResults =
     let baseDir = System.Environment.CurrentDirectory
     
     fileGlobs
         |> Seq.collect (fun glob -> Fake.Globbing.search baseDir glob)
-        |> Seq.map (fun f -> f, FileGeneration.generateToFiles f)
+        |> Seq.map FileGeneration.generateToFiles
         |> List.ofSeq
-
-let isSuccess (result: runResult) = 
-    let errorCount = result |> Seq.collect snd |> Seq.length
-    errorCount = 0
 
 let private printUsage () =
     printfn "Usage:"
     printfn "    stidgen fileName"
 
-let private printResult (result: runResult) =
-    for file, errors in result do
-        match errors with
-        | [] -> ()
-        | errors ->
-            eprintfn "In %s:" file
-            for error in errors do
+let private printResult (results: runResults) =
+    for result in results do
+        if result.HasErrors() then
+            eprintfn "Errors in %s:" result.Configuration.Path.Value
+            for error in result.Configuration.Errors do
                 eprintfn "\t%O" error
                 eprintfn "\t\tContent: %s" error.Line.Text
             eprintfn ""
+        else
+            for file in result.Files do
+                printfn "Generated in %s:" file.FileName
+                for generated in file.IdTypes do
+                    printfn "\t* %s" generated.Name
+            printfn ""
 
-let private getExitCode (result: runResult) = 
-    match isSuccess result with
-    | true -> 0
-    | false -> -1
+let private getExitCode (result: runResults) = 
+    if result |> Seq.exists(fun r -> r.HasErrors()) then
+        -1
+    else
+        0
 
 [<EntryPoint>]
 let main argv = 

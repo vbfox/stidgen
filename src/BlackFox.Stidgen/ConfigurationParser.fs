@@ -105,6 +105,11 @@ type Configuration =
         /// Parse errors
         Errors : ParseError list
     }
+with
+    member x.HasErrors () =
+        x.Errors
+            |> List.length
+            |> (<>) 0
 
 module private LineParser =
     let parseCast (text:string) = result {
