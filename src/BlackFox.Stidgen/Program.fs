@@ -12,7 +12,7 @@ let run (fileGlobs : string seq) : runResults =
 
 let private printUsage () =
     printfn "Usage:"
-    printfn "    stidgen fileName"
+    printfn "    stidgen fileGlob [fileGlob ...]"
 
 let private printResult (results: runResults) =
     for result in results do
