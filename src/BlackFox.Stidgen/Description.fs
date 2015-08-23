@@ -2,6 +2,7 @@
 
 open System
 
+/// Visibility of the created class
 type ClassVisibility =
     | Public
     | Internal
@@ -61,6 +62,7 @@ type IdType =
         ProtobufnetSerializable : bool
     }
 
+/// Create an IdType with the default parameters for the targetType
 let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) = 
     let idType = 
         {
@@ -81,5 +83,6 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
 
     idTypeBuilder idType
 
+/// Create an IdType with the default parameters for the type parameter
 let makeIdFromType<'t> (idTypeBuilder : IdType -> IdType) =
     makeIdType typeof<'t> idTypeBuilder
