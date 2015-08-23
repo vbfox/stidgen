@@ -646,7 +646,7 @@ module DocumentGeneration =
         let workspace = new AdhocWorkspace()
         let project = workspace.AddProject("MyProject", LanguageNames.CSharp)
 
-        let mscorlib = PortableExecutableReference.CreateFromAssembly(typedefof<obj>.Assembly)
+        let mscorlib = PortableExecutableReference.CreateFromFile(typedefof<obj>.Assembly.Location)
         let project = project.AddMetadataReference(mscorlib)
         workspace.TryApplyChanges(project.Solution) |> ignore
 

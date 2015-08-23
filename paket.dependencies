@@ -1,8 +1,9 @@
+redirects: on
 source https://nuget.org/api/v2
 
 // Code
-nuget FSharp.Core ~> 3.1
-nuget Microsoft.CodeAnalysis = 1.0.0-rc2
+nuget FSharp.Core ~> 4
+nuget Microsoft.CodeAnalysis ~> 1
 
 // Unit tests
 nuget NUnit
