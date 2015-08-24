@@ -49,6 +49,7 @@ let private wrapTestCode code =
     let name = sprintf "CodeGen_UnitTest_%s" name
     let template =sprintf "using System;
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using NFluent;
 using NUnit.Framework;

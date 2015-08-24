@@ -63,6 +63,7 @@
     <Compile Include="CsharpCodeTesting.fs" />
     <Compile Include="CsharpGenerationTests.fs" />
     <Compile Include="ConfigurationParserTests.fs" />
+    <Compile Include="ParseTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
