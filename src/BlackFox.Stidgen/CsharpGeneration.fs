@@ -238,12 +238,13 @@ module private Equality =
     let private iequatableOf t =
         SyntaxFactory.QualifiedName(iEquatableNamespace, NameSyntax.MakeGeneric iEquatable.Name [|t|])
 
-    let private makeOperator info eq leftArgType rightArgType =
+    let private makeOperator info eq leftArgType rightArgType leftValueExtractor rightValueExtractor =
         let left = identifier "left"
         let right = identifier "right"
 
-        let value = value info
-        let body = ret (underlyingEquals info (value left) (value right) eq)
+        let leftValue = leftValueExtractor info left
+        let rightValue = rightValueExtractor info right
+        let body = ret (underlyingEquals info leftValue rightValue eq)
 
         let operatorToken = if eq then SyntaxKind.EqualsEqualsToken else SyntaxKind.ExclamationEqualsToken
         SyntaxFactory.OperatorDeclaration(TypeSyntax.Bool, SyntaxFactory.Token(operatorToken))
@@ -253,9 +254,15 @@ module private Equality =
         |> addBodyStatement body
 
     let private addOperators info (classDeclaration:StructDeclarationSyntax) =
+        let direct info expr = expr
+        let generated = info.GeneratedTypeSyntax
+        let underlying = info.UnderlyingTypeSyntax
+
         classDeclaration
-        |> addMember (makeOperator info true info.GeneratedTypeSyntax info.GeneratedTypeSyntax)
-        |> addMember (makeOperator info false info.GeneratedTypeSyntax info.GeneratedTypeSyntax)
+        |> addMember (makeOperator info true generated generated value value)
+        |> addMember (makeOperator info false generated generated value value)
+        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info true generated underlying value direct))
+        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info false generated underlying value direct))
 
     let addEqualityMembers info (decl:StructDeclarationSyntax) =
         decl
