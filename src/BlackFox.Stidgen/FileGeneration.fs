@@ -41,16 +41,21 @@ let private makePath configurationPath (idType:IdType) =
 
     Path.Combine(folder, fileName)
 
-let private getFilesAndContent configurationPath (idTypes : IdType list) =
+let private getFilesAndContentAsync configurationPath (idTypes : IdType list) =
+    let generationForFile (path, typesInPath) =
+        async {
+            let! text = CsharpGeneration.idTypesToStringAsync typesInPath
+            return {
+                FileName = path
+                Text = text
+                IdTypes = typesInPath |> List.ofSeq
+            }
+        }
+
     idTypes
     |> Seq.groupBy (fun t -> makePath configurationPath t)
-    |> Seq.map(fun (path, typesInPath) ->
-        {
-            FileName = path
-            Text = CsharpGeneration.idTypesToString typesInPath
-            IdTypes = typesInPath |> List.ofSeq
-        })
-    |> List.ofSeq
+    |> Seq.map(generationForFile)
+    |> Async.Parallel
 
 let writeCsharpFiles files = 
     for fileResult in files do
@@ -69,10 +74,14 @@ let generateToFiles configurationPath =
     else
         match configuration.Path with
         | Some(path) ->
+            let files =
+                getFilesAndContentAsync path configuration.Types
+                |> Async.RunSynchronously
+                |> List.ofArray
             let result = 
                 {
                     Configuration = configuration
-                    Files = getFilesAndContent path configuration.Types 
+                    Files = files
                 }
 
             if not (result.HasErrors()) then
