@@ -7,6 +7,8 @@ open System
 open System.IO
 open System.Reflection
 
+exception CompilationFailedException of string
+
 let private metadataRef<'t> = MetadataReference.CreateFromFile(typeof<'t>.Assembly.Location)
 
 let private createCompilation (code:string seq) =
@@ -38,7 +40,7 @@ let private loadCsharpCode code =
         let failures = failures |> Seq.map (fun d -> sprintf "%s: %s" d.Id (d.GetMessage()))
         let failures = System.String.Join(", ", failures)
 
-        failwith ("Compilation failed -> " + failures)
+        raise (CompilationFailedException ("Compilation failed -> " + failures))
     else
         ms.Seek(0L, SeekOrigin.Begin) |> ignore
         Assembly.Load(ms.ToArray());
