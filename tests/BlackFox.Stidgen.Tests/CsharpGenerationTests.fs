@@ -100,27 +100,6 @@ let ``Null string can be allowed`` () =
     Check.ThatCode(test).DoesNotThrow() |> ignore
 
 [<Test>]
-let ``GetHashCode is lifted`` () =
-    let idType = makeIdFromType<string> id
-
-    runGeneratedTest idType @"
-    Check.That(new Id(""Test"").Value.GetHashCode()).IsEqualTo(""Test"".GetHashCode());
-    Check.That(new Id(""42"").Value.GetHashCode()).IsEqualTo(""42"".GetHashCode());
-    "
-
-[<Test>]
-let ``GetHashCode works with null`` () =
-    let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true })
-
-    let test () =
-        runGeneratedTest idType @"
-        var instance = new Id(null);
-        GC.KeepAlive(instance.GetHashCode());
-        "
-
-    Check.ThatCode(test).DoesNotThrow() |> ignore
-
-[<Test>]
 let ``Value is interned`` () =
     let idType = makeIdFromType<string> id
 

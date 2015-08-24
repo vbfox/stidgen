@@ -60,10 +60,11 @@
     <Compile Include="AssemblyInfo.fs" />
     <Content Include="App.config" />
     <None Include="paket.references" />
+    <Compile Include="ConfigurationParserTests.fs" />
     <Compile Include="CsharpCodeTesting.fs" />
     <Compile Include="CsharpGenerationTests.fs" />
-    <Compile Include="ConfigurationParserTests.fs" />
     <Compile Include="ParseTests.fs" />
+    <Compile Include="EqualityTests.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
