@@ -130,7 +130,7 @@ let private makeToString info =
 module private Equality =
     open System.Reflection
 
-    let makeGetHashCode info =
+    let private makeGetHashCode info =
         let returnGetHashCode = ret (getHashCode info.ThisValueMemberAccess)
 
         let returnIfNull = info |> makeIfValueNull (fun block ->
@@ -164,7 +164,7 @@ module private Equality =
     let private thisValueEquals info expr =
         underlyingEquals info info.ThisValueMemberAccess expr
 
-    let makeStaticEquals info =
+    let private makeStaticEquals info =
         let parameterA = identifier "a"
         let parameterB = identifier "b"
 
@@ -178,7 +178,7 @@ module private Equality =
         |> addParameter "b" info.GeneratedTypeSyntax
         |> addBodyStatement body
 
-    let makeEquals info =
+    let private makeEquals info =
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
 
@@ -213,7 +213,7 @@ module private Equality =
         |?> (info.Id.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
         |> addBodyStatement returnArgCastToIdValueEqualsValue
 
-    let makeEqualsGenerated info =
+    let private makeEqualsGenerated info =
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
         let body = ret (thisValueEquals info (info.ValueAccess parameter) true)
@@ -223,7 +223,7 @@ module private Equality =
         |> addParameter parameterName info.GeneratedTypeSyntax
         |> addBodyStatement body
         
-    let makeEqualsUnderlying info =
+    let private makeEqualsUnderlying info =
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
         let body = ret (thisValueEquals info parameter true)
@@ -235,10 +235,10 @@ module private Equality =
 
     let private iEquatable = typedefof<IEquatable<_>>
     let private iEquatableNamespace = NameSyntax.MakeQualified(iEquatable.Namespace.Split('.'))
-    let iequatableOf t =
+    let private iequatableOf t =
         SyntaxFactory.QualifiedName(iEquatableNamespace, NameSyntax.MakeGeneric iEquatable.Name [|t|])
 
-    let makeOperator info eq leftArgType rightArgType =
+    let private makeOperator info eq leftArgType rightArgType =
         let left = identifier "left"
         let right = identifier "right"
 
@@ -252,10 +252,21 @@ module private Equality =
         |> addParameter "right" rightArgType
         |> addBodyStatement body
 
-    let addOperators info (classDeclaration:StructDeclarationSyntax) =
+    let private addOperators info (classDeclaration:StructDeclarationSyntax) =
         classDeclaration
         |> addMember (makeOperator info true info.GeneratedTypeSyntax info.GeneratedTypeSyntax)
         |> addMember (makeOperator info false info.GeneratedTypeSyntax info.GeneratedTypeSyntax)
+
+    let addEqualityMembers info (decl:StructDeclarationSyntax) =
+        decl
+        |> addBaseTypes [| iequatableOf info.GeneratedTypeSyntax |]
+        |?> (info.Id.EqualsUnderlying, addBaseTypes [| iequatableOf info.UnderlyingTypeSyntax |])
+        |> addMember (makeGetHashCode info)
+        |> addMember (makeEquals info)
+        |> addMember (makeEqualsGenerated info)
+        |> addMember (makeStaticEquals info)
+        |> addOperators info
+        |?> (info.Id.EqualsUnderlying, addMember (makeEqualsUnderlying info))
 
 module private Casts =
     let addCast fromType toType cast expressionMaker generatedType =
@@ -526,7 +537,7 @@ module private ParseMethods =
         let members = members |> Seq.collect id |> Seq.map (fun m -> m :> MemberDeclarationSyntax)
 
         decl |> addMembers members
- 
+
 /// Add the [GeneratedCodeAttribute] for each generated member
 module GeneratedCodeAttribute = 
     // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
@@ -564,8 +575,6 @@ let private makeClass info =
         decl |> addMember (builder info)
 
     (struct' info.Id.Name)
-        |> addBaseTypes [| Equality.iequatableOf info.GeneratedTypeSyntax |]
-        |?> (info.Id.EqualsUnderlying, addBaseTypes [| Equality.iequatableOf info.UnderlyingTypeSyntax |])
         |> ProtobufNet.addProtoContract info
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
         |> addMember' makeValueField
@@ -573,12 +582,7 @@ let private makeClass info =
         |> addMember' makeCtor
         |> addMember' makeCheckValuePartial
         |> addMember' makeToString
-        |> addMember' Equality.makeGetHashCode
-        |> addMember' Equality.makeEquals
-        |> addMember' Equality.makeEqualsGenerated
-        |> addMember' Equality.makeStaticEquals
-        |> Equality.addOperators info
-        |?> (info.Id.EqualsUnderlying, addMember' Equality.makeEqualsUnderlying)
+        |> Equality.addEqualityMembers info 
         |> Casts.addAll info
         |> ParseMethods.addParseMethods info
         |> Convertible.addIConvertibleMembers info
