@@ -13,6 +13,8 @@
   the FullName of the Type instead of C# code.
 * BUGFIX: Casts to and from nullable were still generated for Nullable<T>
   underlying resulting in invalid code.
+* BUGFIX: 'EqualsUnderlying: true' generated code for '.Equals' but didn't
+  generate the == and != operators.
 
 ### New in 0.3.0
 * Add casts to and from nullable.
