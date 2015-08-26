@@ -11,20 +11,26 @@ open SourceLink
 #endif
 
 let nunitPath = @"packages\NUnit.Runners\tools"
-let binDir = __SOURCE_DIRECTORY__ @@ "bin"
-let testsDir = Path.Combine(binDir, "tests")
+let binDir = __SOURCE_DIRECTORY__ </> "bin"
+let testsDir = binDir </> "tests"
+let appBinDir = binDir </> "BlackFox.Stidgen"
 
 let project = "stidgen"
 let summary = "Strongly Typed ID type Generator"
-let solutionFile  = __SOURCE_DIRECTORY__ @@ project + ".sln"
-let testAssemblies = __SOURCE_DIRECTORY__ @@ "tests/**/bin/Release/*.Tests.dll"
-let sourceProjects = __SOURCE_DIRECTORY__ @@ "src/**/*.??proj"
+let solutionFile  = __SOURCE_DIRECTORY__ </> project + ".sln"
+let testAssemblies = __SOURCE_DIRECTORY__ </> "tests/**/bin/Release/*.Tests.dll"
+let sourceProjects = __SOURCE_DIRECTORY__ </> "src/**/*.??proj"
+
+
+/// The profile where the project is posted
+let gitOwner = "vbfox" 
+let gitHome = "https://github.com/" + gitOwner
 
 /// The name of the project on GitHub
 let gitName = "stidgen"
 
 /// The url for the raw files hosted
-let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/vbfox"
+let gitRaw = environVarOrDefault "gitRaw" ("https://raw.github.com/" + gitOwner)
 
 // --------------------------------------------------------------------------------------
 // Build steps
@@ -71,9 +77,9 @@ Target "AssemblyInfo" <| fun _ ->
     |> Seq.map getProjectDetails
     |> Seq.iter (fun (projFileName, projectName, folderName, attributes) ->
         match projFileName with
-        | Fsproj -> CreateFSharpAssemblyInfo (folderName @@ "AssemblyInfo.fs") attributes
-        | Csproj -> CreateCSharpAssemblyInfo ((folderName @@ "Properties") @@ "AssemblyInfo.cs") attributes
-        | Vbproj -> CreateVisualBasicAssemblyInfo ((folderName @@ "My Project") @@ "AssemblyInfo.vb") attributes
+        | Fsproj -> CreateFSharpAssemblyInfo (folderName </> "AssemblyInfo.fs") attributes
+        | Csproj -> CreateCSharpAssemblyInfo ((folderName </> "Properties") </> "AssemblyInfo.cs") attributes
+        | Vbproj -> CreateVisualBasicAssemblyInfo ((folderName </> "My Project") </> "AssemblyInfo.vb") attributes
         )
 
 // Copies binaries from default VS location to expected bin folder
@@ -82,7 +88,7 @@ Target "AssemblyInfo" <| fun _ ->
 Target "CopyBinaries" <| fun _ ->
     CreateDir binDir
     !! sourceProjects
-    |>  Seq.map (fun f -> ((System.IO.Path.GetDirectoryName f) @@ "bin/Release", binDir @@ (System.IO.Path.GetFileNameWithoutExtension f)))
+    |>  Seq.map (fun f -> ((System.IO.Path.GetDirectoryName f) </> "bin/Release", binDir </> (System.IO.Path.GetFileNameWithoutExtension f)))
     |>  Seq.iter (fun (fromDir, toDir) -> CopyDir toDir fromDir (fun _ -> true))
 
 // --------------------------------------------------------------------------------------
@@ -128,6 +134,20 @@ Target "SourceLink" (fun _ ->
 #endif
 
 // --------------------------------------------------------------------------------------
+// Build a Zip package
+
+let zipPath = binDir </> (sprintf "%s-%s.zip" project release.NugetVersion)
+
+Target "Zip" (fun _ ->
+    let comment = sprintf "%s v%s" project release.NugetVersion
+    let files =
+        !! (appBinDir </> "*.dll")
+        ++ (appBinDir </> "*.pdb")
+        ++ (appBinDir </> "*.exe")
+    ZipHelper.CreateZip appBinDir zipPath comment 7 false files
+)
+
+// --------------------------------------------------------------------------------------
 // Build a NuGet package
 
 Target "NuGet" <| fun _ ->
@@ -138,15 +158,53 @@ Target "NuGet" <| fun _ ->
             ReleaseNotes = toLines release.Notes}
 
 Target "PublishNuget" <| fun _ ->
-    let key = getParam "nugetkey"
-    match key with
-    | Some(key) -> Paket.Push <| fun p ->  { p with WorkingDir = binDir; ApiKey = key }
-    | None -> failwith "No API key configured, use nugetkey=value or specify it as an environment variable"
+    let key =
+        match getParam "nuget-key" with
+        | Some(key) -> key
+        | None -> getUserPassword "NuGet key: "
+        
+    Paket.Push <| fun p ->  { p with WorkingDir = binDir; ApiKey = key }
+
+// --------------------------------------------------------------------------------------
+// Release Scripts
+
+#load "paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
+
+Target "GitHubRelease" (fun _ ->
+    let user =
+        match getBuildParam "github-user" with
+        | s when not (String.IsNullOrWhiteSpace s) -> s
+        | _ -> getUserInput "Username: "
+    let pw =
+        match getBuildParam "github-pw" with
+        | s when not (String.IsNullOrWhiteSpace s) -> s
+        | _ -> getUserPassword "Password: "
+    let remote =
+        Git.CommandHelper.getGitResult "" "remote -v"
+        |> Seq.filter (fun (s: string) -> s.EndsWith("(push)"))
+        |> Seq.tryFind (fun (s: string) -> s.Contains(gitOwner + "/" + gitName))
+        |> function None -> gitHome + "/" + gitName | Some (s: string) -> s.Split().[0]
+
+    Git.Staging.StageAll ""
+    Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
+    Git.Branches.pushBranch "" remote (Git.Information.getBranchName "")
+
+    Git.Branches.tag "" release.NugetVersion
+    Git.Branches.pushTag "" remote release.NugetVersion
+    
+    // release on github
+    Octokit.createClient user pw
+    |> Octokit.createDraft gitOwner gitName release.NugetVersion (release.SemVer.PreRelease <> None) release.Notes 
+    |> Octokit.uploadFile zipPath    
+    |> Octokit.releaseDraft
+    |> Async.RunSynchronously
+)
 
 // --------------------------------------------------------------------------------------
 // Empty targets for readability
 
 Target "Default" <| fun _ -> trace "Default target executed"
+Target "Release" <| fun _ -> trace "Release target executed"
 
 Target "Paket" <| fun _ -> trace "Paket should have been executed"
 
@@ -160,12 +218,21 @@ Target "Paket" <| fun _ -> trace "Paket should have been executed"
     ==> "RunTests"
     ==> "Default"
 
-"Default"
+let finalBinaries =
+    "Default"
 #if MONO
 #else
     =?> ("SourceLink", Pdbstr.tryFind().IsSome )
 #endif
+
+finalBinaries
+    ==> "Zip"
+    ==> "GitHubRelease"
+    ==> "Release"
+    
+finalBinaries
     ==> "NuGet"
     ==> "PublishNuget"
+    ==> "Release"
 
 RunTargetOrDefault "Default"

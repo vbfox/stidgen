@@ -6,6 +6,9 @@ NUGET
     FSharp.Core (4.0.0.1)
     FsUnit (1.3.1)
       NUnit (2.6.4)
+    Microsoft.Bcl (1.1.10)
+      Microsoft.Bcl.Build (>= 1.0.14)
+    Microsoft.Bcl.Build (1.0.21)
     Microsoft.CodeAnalysis (1.0.0)
       Microsoft.CodeAnalysis.CSharp.Workspaces (1.0.0)
       Microsoft.CodeAnalysis.VisualBasic.Workspaces (1.0.0)
@@ -28,9 +31,14 @@ NUGET
       Microsoft.CodeAnalysis.Common (1.0.0)
       Microsoft.Composition (>= 1.0.27)
     Microsoft.Composition (1.0.30)
+    Microsoft.Net.Http (2.2.29)
+      Microsoft.Bcl (>= 1.1.10)
+      Microsoft.Bcl.Build (>= 1.0.14)
     NFluent (1.3.1)
     NUnit (2.6.4)
     NUnit.Runners (2.6.4)
+    Octokit (0.14.0)
+      Microsoft.Net.Http
     SourceLink.Fake (1.1.0)
     System.Collections (4.0.10)
       System.Diagnostics.Debug (>= 4.0.0) - framework: dnxcore50
@@ -139,3 +147,8 @@ NUGET
       System.Threading.Tasks (>= 4.0.0)
     System.Threading.Tasks (4.0.10)
       System.Runtime (>= 4.0.0)
+GITHUB
+  remote: fsharp/FAKE
+  specs:
+    modules/Octokit/Octokit.fsx (52a1c3f13641a7e34ecffb63c2e6a94d639d3162)
+      Octokit
