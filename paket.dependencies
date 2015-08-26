@@ -12,4 +12,5 @@ nuget FsUnit
 
 // Build infrastructure
 nuget FAKE
+nuget SourceLink.Fake
 nuget NUnit.Runners
