@@ -161,6 +161,10 @@ Target "Paket" <| fun _ -> trace "Paket should have been executed"
     ==> "Default"
 
 "Default"
+#if MONO
+#else
+    =?> ("SourceLink", Pdbstr.tryFind().IsSome )
+#endif
     ==> "NuGet"
     ==> "PublishNuget"
 
