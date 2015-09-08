@@ -143,6 +143,7 @@ Target "Zip" (fun _ ->
     let files =
         !! (appBinDir </> "*.dll")
         ++ (appBinDir </> "*.pdb")
+        ++ (appBinDir </> "*.config")
         ++ (appBinDir </> "*.exe")
     ZipHelper.CreateZip appBinDir zipPath comment 7 false files
 )
@@ -189,11 +190,11 @@ Target "GitHubRelease" (fun _ ->
     let user =
         match getBuildParam "github-user" with
         | s when not (String.IsNullOrWhiteSpace s) -> s
-        | _ -> getUserInput "Username: "
+        | _ -> getUserInput "GitHub Username: "
     let pw =
         match getBuildParam "github-pw" with
         | s when not (String.IsNullOrWhiteSpace s) -> s
-        | _ -> getUserPassword "Password: "
+        | _ -> getUserPassword "GitHub Password or Token: "
 
     // release on github
     Octokit.createClient user pw
