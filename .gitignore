@@ -3,6 +3,7 @@
 
 # Paket package manager
 /.paket/paket.exe
+/paket-files/
 
 # NCrunch unit test runner
 *.ncrunchsolution
