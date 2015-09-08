@@ -142,7 +142,6 @@ Target "Zip" (fun _ ->
     let comment = sprintf "%s v%s" project release.NugetVersion
     let files =
         !! (appBinDir </> "*.dll")
-        ++ (appBinDir </> "*.pdb")
         ++ (appBinDir </> "*.config")
         ++ (appBinDir </> "*.exe")
     ZipHelper.CreateZip appBinDir zipPath comment 7 false files
