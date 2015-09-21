@@ -1,3 +1,8 @@
+# New in 0.5.0
+* BUGFIX: Correct code is now generated for `!=` on underlying types that
+  don't have a `!=` operator.
+  [Issue #35](https://github.com/vbfox/stidgen/issues/35)
+
 ### New in 0.4.0
 * Static methods `Parse` and `TryParse` are lifted.
 * A variant of `TryParse` returning a nullable instead of using an out
