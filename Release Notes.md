@@ -1,4 +1,4 @@
-# New in 0.5.0
+### New in 0.5.0
 * BUGFIX: Correct code is now generated for `!=` on underlying types that
   don't have a `!=` operator.
   [Issue #35](https://github.com/vbfox/stidgen/issues/35)
