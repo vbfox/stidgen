@@ -7,7 +7,7 @@ open System
 open System.IO
 open System.Reflection
 
-exception CompilationFailedException of string
+type CompilationFailedException(message:string) = inherit Exception(message)
 
 let private metadataRef<'t> = MetadataReference.CreateFromFile(typeof<'t>.Assembly.Location)
 

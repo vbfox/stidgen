@@ -118,7 +118,7 @@ let ``== underlying and != underlying when enabled`` () =
 
 [<Test>]
 let ``== underlying and != underlying when enabled for value type`` () =
-    let idType = makeIdFromType<string> (fun i -> { i with EqualsUnderlying = true })
+    let idType = makeIdFromType<int> (fun i -> { i with EqualsUnderlying = true })
 
     runGeneratedTest idType @"
     var instance = new Id(42);

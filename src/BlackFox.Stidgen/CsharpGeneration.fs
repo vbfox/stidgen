@@ -159,7 +159,11 @@ module private Equality =
             op exprA exprB :> ExpressionSyntax
         else
             // Otherwise Object.Equals is a safe choice
-            objectEquals exprA exprB :> ExpressionSyntax
+            let equalsMethod = objectEquals exprA exprB
+            if eq then
+                equalsMethod :> ExpressionSyntax
+            else
+                not' equalsMethod :> ExpressionSyntax
 
     let private thisValueEquals info expr =
         underlyingEquals info info.ThisValueMemberAccess expr
