@@ -1,4 +1,7 @@
 ### New in 0.5.0
+* Predefined types like `int` are now compared with their operators instead
+  of relying on `Equals`.
+  [Issue #36](https://github.com/vbfox/stidgen/issues/36)
 * BUGFIX: Correct code is now generated for `!=` on underlying types that
   don't have a `!=` operator.
   [Issue #35](https://github.com/vbfox/stidgen/issues/35)
