@@ -93,6 +93,18 @@ let ``== id and != id`` () =
     "
 
 [<Test>]
+let ``== id and != id for value type`` () =
+    let idType = makeIdFromType<int> id
+
+    runGeneratedTest idType @"
+    var instance = new Id(42);
+    Check.That(instance == new Id(42)).IsTrue();
+    Check.That(instance == new Id(666)).IsFalse();
+    Check.That(instance != new Id(42)).IsFalse();
+    Check.That(instance != new Id(666)).IsTrue();
+    "
+
+[<Test>]
 let ``== underlying and != underlying when enabled`` () =
     let idType = makeIdFromType<string> (fun i -> { i with EqualsUnderlying = true })
 
@@ -102,6 +114,18 @@ let ``== underlying and != underlying when enabled`` () =
     Check.That(instance == ""Bar"").IsFalse();
     Check.That(instance != ""Foo"").IsFalse();
     Check.That(instance != ""Bar"").IsTrue();
+    "
+
+[<Test>]
+let ``== underlying and != underlying when enabled for value type`` () =
+    let idType = makeIdFromType<string> (fun i -> { i with EqualsUnderlying = true })
+
+    runGeneratedTest idType @"
+    var instance = new Id(42);
+    Check.That(instance == 42).IsTrue();
+    Check.That(instance == 666).IsFalse();
+    Check.That(instance != 42).IsFalse();
+    Check.That(instance != 666).IsTrue();
     "
 
 [<Test>]
