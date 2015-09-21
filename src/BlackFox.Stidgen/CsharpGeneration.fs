@@ -142,8 +142,19 @@ module private Equality =
         |?> (info.CanBeNull, addBodyStatement returnIfNull)
         |> addBodyStatement returnGetHashCode
 
+    /// All of the following types have '!=' and '==' implemented with another instance of the same type
+    /// but there is no op_Equality or op_Inequality method present as they exists directly at the IL level.
+    let predefinedEqualityOperators =
+        [
+            typeof<SByte>; typeof<Int16>; typeof<Int32>; typeof<Int64>; typeof<Byte>;
+            typeof<UInt16>; typeof<UInt32>; typeof<UInt64>; typeof<Single>;
+            typeof<Double>; typeof<Boolean>; typeof<Char>
+        ]
+
     /// Call the most adapted underlying equals method between underlying-typed expressions.
     let private underlyingEquals info exprA exprB eq =
+        let isPredefined = predefinedEqualityOperators |> List.exists (fun t -> info.Id.UnderlyingType = t)
+
         let opMethod =
             info.Id.UnderlyingType.GetMethod(
                 (if eq then "op_Equality" else "op_Inequality"),
@@ -153,7 +164,7 @@ module private Equality =
                 [|info.Id.UnderlyingType;info.Id.UnderlyingType|],
                 null)
         
-        if opMethod <> null then
+        if isPredefined || (opMethod <> null) then
             // Prefer the operator as for CLR implementations it's an obvious optimization for native types and strings
             let op = if eq then equals else notEquals
             op exprA exprB :> ExpressionSyntax
