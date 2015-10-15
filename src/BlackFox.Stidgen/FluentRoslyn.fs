@@ -106,11 +106,17 @@ let inline addAttributeList (attributes:AttributeSyntax seq) (input:^T) =
 let inline addAttribute attribute input =
     addAttributeList [attribute] input
     
+let makeAttribute' name (args:AttributeArgumentSyntax list) = 
+    // Special casing the empty list as null generate an attribute without empty parenthesis after it
+    let finalArgs = if args.IsEmpty then null else SyntaxFactory.AttributeArgumentList(args |> toSeparatedList)
+    SyntaxFactory.Attribute(name, finalArgs)
+
+let attributeArgument (name : string) value =
+    SyntaxFactory.AttributeArgument(value).WithNameEquals(SyntaxFactory.NameEquals(name))
+
 let makeAttribute name args =
     let mappedArgs = args |> List.map (fun a -> SyntaxFactory.AttributeArgument(a))
-    // Special casing the empty list as null generate an attribute without empty parenthesis after it
-    let finalArgs = if mappedArgs.IsEmpty then null else SyntaxFactory.AttributeArgumentList(mappedArgs |> toSeparatedList)
-    SyntaxFactory.Attribute(name, finalArgs)
+    makeAttribute' name mappedArgs
 
 let makeSingleLineComments (s:string) = 
     let lines = System.Text.RegularExpressions.Regex.Split(s, "\r\n|\r|\n")

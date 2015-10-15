@@ -156,6 +156,9 @@ module private LineParser =
         | "ProtobufnetSerializable" ->
             let! b = parseBool value
             return { idType with ProtobufnetSerializable = b }
+        | "DataContractSerializable" ->
+            let! b = parseBool value
+            return { idType with DataContractSerializable = b }
         | _ -> return! Failure (sprintf "Property '%s' isn't supported" name)
     }
 

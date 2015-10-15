@@ -37,28 +37,64 @@ let private visibilityToKeyword = function
     | Public -> SyntaxKind.PublicKeyword
     | Internal -> SyntaxKind.InternalKeyword
 
-module private ProtobufNet =
-    let ifEnabled info arg f = if info.Id.ProtobufnetSerializable then f arg else arg
+module private SerializationAttributes =
+    module private ProtobufNet =
+        let ifEnabled info arg f = if info.Id.ProtobufnetSerializable then f arg else arg
 
-    let addProtoMember info field =
-        ifEnabled info field
-            <| addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1])
+        let addProtoMember info field =
+            ifEnabled info field
+                <| addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1])
 
-    let addProtoContract info (generatedType:StructDeclarationSyntax) =
-        ifEnabled info generatedType
-            <| addAttribute (makeAttribute (identifier "ProtoContract") [])
+        let addProtoContract info (generatedType:StructDeclarationSyntax) =
+            ifEnabled info generatedType
+                <| addAttribute (makeAttribute (identifier "ProtoContract") [])
+
+        let addUsing infos file =
+            let enabledForOne = infos |> Seq.exists (fun i -> i.Id.ProtobufnetSerializable)
+            if enabledForOne then
+                file |> addUsings ["ProtoBuf"]
+            else
+                file
+
+    module private DataContract =
+        let ifEnabled info arg f = if info.Id.DataContractSerializable then f arg else arg
+
+        let addDataMember info field =
+            ifEnabled info field (fun field ->
+                let orderArgument = attributeArgument "Order" (Literal.Int 1)
+                let attribute = makeAttribute' (identifier "DataMember") [orderArgument]
+                addAttribute attribute field)
+
+        let addDataContract info (generatedType:StructDeclarationSyntax) =
+            ifEnabled info generatedType
+                <| addAttribute (makeAttribute (identifier "DataContract") [])
+
+        let addUsing infos file =
+            let enabledForOne = infos |> Seq.exists (fun i -> i.Id.ProtobufnetSerializable)
+            if enabledForOne then
+                file |> addUsings ["System.Runtime.Serialization"]
+            else
+                file
 
     let addUsing infos file =
-        let enabledForOne = infos |> Seq.exists (fun i -> i.Id.ProtobufnetSerializable)
-        if enabledForOne then
-            file |> addUsings ["ProtoBuf"]
-        else
-            file
+        file
+        |> ProtobufNet.addUsing infos 
+        |> DataContract.addUsing infos
+
+    let addToGeneratedType info (generatedType:StructDeclarationSyntax) =
+        generatedType
+        |> ProtobufNet.addProtoContract info 
+        |> DataContract.addDataContract info
+
+    let addToField info field =
+        field
+        |> ProtobufNet.addProtoMember info 
+        |> DataContract.addDataMember info
 
 let private makeValueField info =
     field info.UnderlyingTypeSyntax info.FieldName
         |> addModifiers [|SyntaxKind.PrivateKeyword; SyntaxKind.ReadOnlyKeyword|]
-        |> ProtobufNet.addProtoMember info
+        |> SerializationAttributes.addToField info
 
 let private makeValueProperty info =
     let body = block [| ret info.ThisValueMemberAccess |]
@@ -597,7 +633,7 @@ let private makeClass info =
         decl |> addMember (builder info)
 
     (struct' info.Id.Name)
-        |> ProtobufNet.addProtoContract info
+        |> SerializationAttributes.addToGeneratedType info
         |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
         |> addMember' makeValueField
         |> addMember' makeValueProperty
@@ -662,7 +698,7 @@ let makeRootNode (idTypes : IdType seq) =
 
     emptyFile
         |> addUsings [ "System"; "System.CodeDom.Compiler" (*GeneratedCodeAttribute*)]
-        |> ProtobufNet.addUsing infos
+        |> SerializationAttributes.addUsing infos
         |> addMembers fileLevelNodes
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
 

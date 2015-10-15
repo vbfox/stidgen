@@ -60,6 +60,9 @@ type IdType =
 
         /// Enable generation of the protobuf-net attributes necessary for serialization
         ProtobufnetSerializable : bool
+
+        /// Enable generation of the DataContract attributes necessary for serialization
+        DataContractSerializable : bool
     }
 
 /// Create an IdType with the default parameters for the targetType
@@ -79,6 +82,7 @@ let makeIdType (targetType:Type) (idTypeBuilder : IdType -> IdType) =
             UseNameAsFileName = false
             FileName = Option.None
             ProtobufnetSerializable = false
+            DataContractSerializable = false
         }
 
     idTypeBuilder idType
