@@ -70,7 +70,7 @@ module private SerializationAttributes =
                 <| addAttribute (makeAttribute (identifier "DataContract") [])
 
         let addUsing infos file =
-            let enabledForOne = infos |> Seq.exists (fun i -> i.Id.ProtobufnetSerializable)
+            let enabledForOne = infos |> Seq.exists (fun i -> i.Id.DataContractSerializable)
             if enabledForOne then
                 file |> addUsings ["System.Runtime.Serialization"]
             else
