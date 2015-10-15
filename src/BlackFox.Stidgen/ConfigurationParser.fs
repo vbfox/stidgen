@@ -28,7 +28,7 @@ type ParseError =
         ErrorText : ErrorText
         IsInvalidType : bool
     }
-    static member fromString text line  = { Line = line; ErrorText = text; IsInvalidType = false }
+    static member FromString text line  = { Line = line; ErrorText = text; IsInvalidType = false }
     override x.ToString () = sprintf "Error line %i: %s" x.Line.Number x.ErrorText
 
 module private TextParser =
@@ -189,12 +189,12 @@ module private LineParser =
         | "string" -> return typeof<string>
         | s ->
             let type' = System.Type.GetType(s, false)
-            let type' = if type' <> null then type' else System.Type.GetType("System." + s, false)
+            let type' = if isNull type' then  System.Type.GetType("System." + s, false) else type'
 
-            if type' <> null then
-                return type'
-            else
+            if isNull type' then
                 return! Failure (sprintf "Type '%s' not found." s)
+            else
+                return type'
     }
 
     let parseVisibility visibilityText = result {
@@ -244,24 +244,24 @@ module private LineParser =
             match line with
             | Success(line) ->
                 match line.Content with
-                | Property(_,_) -> 
+                | Property(_) -> 
                     match currentType with
                     | Some(idType) -> 
                         let idType = idType |> addProperty line.Content
                         match idType with
                         | Success(idType) -> continueOnType idType
-                        | Failure(error) -> reportPropertyError (ParseError.fromString error line.Line)
+                        | Failure(error) -> reportPropertyError (ParseError.FromString error line.Line)
                     | Option.None -> reportPropertyError (propertyWithNoValidType line)
-                | TypeDefinition(_,_,_,_) ->
+                | TypeDefinition(_) ->
                     let newType = typeDefinitionToType line.Content
                     match newType with
                     | Success(newType) -> finishCurrentType newType
-                    | Failure(error) -> reportTypeError (ParseError.fromString error line.Line)
+                    | Failure(error) -> reportTypeError (ParseError.FromString error line.Line)
             | Failure(error) ->
                 // If a type line was invalid we don't want the following properties to be associated with the previous type
                 // But if a property is invalid we want the following properties to be associated with the current type
                 match (error.IsInvalidType, currentType) with
-                | (true, Some(currentType)) -> reportTypeError error
+                | (true, Some(_)) -> reportTypeError error
                 | _ -> reportPropertyError error
         | [] -> 
             match currentType with
@@ -282,10 +282,10 @@ open System.IO
 
 let loadFromTextReader (reader:TextReader) = 
     let lines = seq {
-        let line = ref (reader.ReadLine())
-        while !line <> null do
-            yield !line
-            line := reader.ReadLine()
+        let mutable line = reader.ReadLine()
+        while not (isNull line) do
+            yield line
+            line <- reader.ReadLine()
     }
     loadFromLines lines
 

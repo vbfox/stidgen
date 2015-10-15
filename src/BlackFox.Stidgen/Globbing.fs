@@ -2,7 +2,6 @@
 module internal Fake.Globbing
 
 open System
-open System.Collections.Generic
 open System.IO
 open System.Text.RegularExpressions
 
@@ -38,7 +37,7 @@ let rec private buildPaths acc (input : SearchOption list) =
             |> List.map (checkSubDirs true name)
             |> List.concat
         buildPaths subDirs t
-    | Recursive :: [] -> 
+    |  [Recursive] -> 
         let dirs = 
             Seq.collect (fun dir -> Directory.EnumerateFileSystemEntries(dir, "*", SearchOption.AllDirectories)) acc 
             |> Seq.toList
@@ -48,7 +47,7 @@ let rec private buildPaths acc (input : SearchOption list) =
             Seq.collect (fun dir -> Directory.EnumerateDirectories(dir, "*", SearchOption.AllDirectories)) acc 
             |> Seq.toList
         buildPaths (acc @ dirs) t
-    | FilePattern(pattern) :: t -> 
+    | FilePattern(pattern) :: _ -> 
          Seq.collect (fun dir -> 
                             if Directory.Exists(Path.Combine(dir, pattern))
                             then seq { yield Path.Combine(dir, pattern) }
@@ -56,7 +55,7 @@ let rec private buildPaths acc (input : SearchOption list) =
 
 let private isDrive = 
     let regex = Regex(@"^[A-Za-z]:$", RegexOptions.Compiled)
-    fun dir -> regex.IsMatch dir
+    regex.IsMatch
 
 let inline private normalizePath (p : string) = 
     p.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)
@@ -77,7 +76,7 @@ let internal getRoot (baseDirectory : string) (pattern : string) =
     let globRoot = 
         // If we did not find any "*", then drop the last bit (it is a file name, not a pattern)
         ( if patternPathParts.Length = patternParts.Length then
-              patternPathParts.[0 .. patternPathParts.Length-2]     
+              patternPathParts.[0 .. patternPathParts.Length-2]
           else patternPathParts )
         |> String.concat (Path.DirectorySeparatorChar.ToString())
 

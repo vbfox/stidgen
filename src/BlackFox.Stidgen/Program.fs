@@ -1,8 +1,8 @@
 ﻿module BlackFox.Stidgen.Program
 
-type runResults = FileGeneration.GenerationResult list
+type RunResults = FileGeneration.GenerationResult list
 
-let run (fileGlobs : string seq) : runResults =
+let run (fileGlobs : string seq) : RunResults =
     let baseDir = System.Environment.CurrentDirectory
     
     fileGlobs
@@ -14,7 +14,7 @@ let private printUsage () =
     printfn "Usage:"
     printfn "    stidgen fileGlob [fileGlob ...]"
 
-let private printResult (results: runResults) =
+let private printResult (results: RunResults) =
     for result in results do
         if result.HasErrors() then
             eprintfn "Errors in %s:" result.Configuration.Path.Value
@@ -29,7 +29,7 @@ let private printResult (results: runResults) =
                     printfn "\t* %s" generated.Name
             printfn ""
 
-let private getExitCode (result: runResults) = 
+let private getExitCode (result: RunResults) = 
     if result |> Seq.exists(fun r -> r.HasErrors()) then
         -1
     else

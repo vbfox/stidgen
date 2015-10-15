@@ -304,10 +304,10 @@ module WellKnownMethods =
         invocation method' [| objA; objB |]
 
     /// x.ToString()
-    let toString x = invocation (memberAccess "ToString" x) Array.empty
+    let toString x = invocation (memberAccess "ToString" x) [||]
 
     /// x.GetHashCode()
-    let getHashCode x = invocation (memberAccess "GetHashCode" x) Array.empty
+    let getHashCode x = invocation (memberAccess "GetHashCode" x) [||]
 
     /// System.String.Intern(s)
     let stringIntern s =
@@ -321,7 +321,7 @@ type NameSyntax with
     static member MakeQualified (parts : string seq) =
         parts |> Seq.fold
             (fun a b ->
-                if a = null then
+                if isNull a then
                     NameSyntax.PrefixWithGlobal (SyntaxFactory.IdentifierName(b)) :> NameSyntax
                 else
                     SyntaxFactory.QualifiedName(a, SyntaxFactory.IdentifierName(b)) :> NameSyntax
@@ -341,7 +341,7 @@ type NameSyntax with
             if t.IsGenericType then
                 let types = t.GetGenericArguments() |> Array.map (fun t -> NameSyntax.FromType t :> TypeSyntax)
                 NameSyntax.MakeGeneric t.Name types :> SimpleNameSyntax
-            else  
+            else
                 SyntaxFactory.IdentifierName(t.Name) :> SimpleNameSyntax
     
         let fullName = SyntaxFactory.QualifiedName(namespaceExpression, name)

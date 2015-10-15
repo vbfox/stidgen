@@ -139,7 +139,7 @@ let private returnCallVoidMethodOnValue name info =
     ret
         (invocation
             (info.ThisValueMemberAccess |> memberAccess name)
-            Array.empty)
+            [||])
 
 let private makeIfValueNull fillBlock info =
     if'
@@ -200,7 +200,7 @@ module private Equality =
                 [|info.Id.UnderlyingType;info.Id.UnderlyingType|],
                 null)
         
-        if isPredefined || (opMethod <> null) then
+        if isPredefined || (not (isNull opMethod)) then
             // Prefer the operator as for CLR implementations it's an obvious optimization for native types and strings
             let op = if eq then equals else notEquals
             op exprA exprB :> ExpressionSyntax
@@ -610,20 +610,21 @@ module GeneratedCodeAttribute =
     let private isPartial (method' : MethodDeclarationSyntax) =
         method'.Modifiers.Any(SyntaxKind.PartialKeyword)
 
+    let private addToMember' (m : MemberDeclarationSyntax) =
+        match m with
+        | :? PropertyDeclarationSyntax as property -> property |> addToMember :> MemberDeclarationSyntax
+        | :? FieldDeclarationSyntax as field -> field |> addToMember :> MemberDeclarationSyntax
+        | :? MethodDeclarationSyntax as method' ->
+            let method' = if isPartial method' then method' else method' |> addToMember
+            method' :> MemberDeclarationSyntax
+        | :? OperatorDeclarationSyntax as operator -> operator |> addToMember :> MemberDeclarationSyntax
+        | :? ConversionOperatorDeclarationSyntax as cast -> cast |> addToMember :> MemberDeclarationSyntax
+        | :? ConstructorDeclarationSyntax as ctor -> ctor |> addToMember :> MemberDeclarationSyntax
+        | _ -> m
+
     /// Add the 'GeneratedCodeAttribute' to all members of the type
     let addToAllMembers (typeSyntax : StructDeclarationSyntax) =
-        let members = typeSyntax.Members |> Seq.map (fun m -> 
-            match m with
-            | :? PropertyDeclarationSyntax as property -> property |> addToMember :> MemberDeclarationSyntax
-            | :? FieldDeclarationSyntax as field -> field |> addToMember :> MemberDeclarationSyntax
-            | :? MethodDeclarationSyntax as method' ->
-                let method' = if isPartial method' then method' else method' |> addToMember
-                method' :> MemberDeclarationSyntax
-            | :? OperatorDeclarationSyntax as operator -> operator |> addToMember :> MemberDeclarationSyntax
-            | :? ConversionOperatorDeclarationSyntax as cast -> cast |> addToMember :> MemberDeclarationSyntax
-            | :? ConstructorDeclarationSyntax as ctor -> ctor |> addToMember :> MemberDeclarationSyntax
-            | _ -> m
-            )
+        let members = typeSyntax.Members |> Seq.map addToMember'
         typeSyntax.WithMembers( members |> toSyntaxList )
 
 let private makeClass info = 
@@ -672,25 +673,26 @@ let private topOfFileComments = @"----------------------
  </auto-generated>
 ----------------------"
 
+let private addNamespaceTypes (ns, nsTypes) =
+    let classNodes = nsTypes |> Seq.map(fun info ->
+            info |> makeClass :> MemberDeclarationSyntax
+        )
+
+    if String.IsNullOrEmpty(ns) then
+        classNodes
+    else
+        let nsNode =
+            SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(ns))
+            |> addMembers classNodes
+            :> MemberDeclarationSyntax
+
+        [nsNode] :> MemberDeclarationSyntax seq
+
 let private makeFileLevelNodes (idTypes : ParsedInfo list) =
     idTypes
     |> Seq.groupBy (fun i -> i.Id.Namespace)
     |> Seq.sortBy (fun (ns, _) -> ns)
-    |> Seq.collect(fun (ns, nsTypes) ->
-        let classNodes = nsTypes |> Seq.map(fun info ->
-                info |> makeClass :> MemberDeclarationSyntax
-            )
-
-        if String.IsNullOrEmpty(ns) then
-            classNodes
-        else
-            let nsNode =
-                SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(ns))
-                |> addMembers classNodes
-                :> MemberDeclarationSyntax
-
-            [nsNode] :> MemberDeclarationSyntax seq
-    )
+    |> Seq.collect addNamespaceTypes
 
 let makeRootNode (idTypes : IdType seq) =
     let infos = idTypes |> List.ofSeq |> List.map makeInfo

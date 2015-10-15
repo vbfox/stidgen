@@ -89,4 +89,4 @@ let generateToFiles configurationPath =
 
             result
         
-        | _ -> failwith "Unexpected"    
+        | _ -> failwith "Unexpected"
