@@ -1,3 +1,7 @@
+## New in 0.5.1
+* Add an option to enable DataContract serialization.
+  [Issue #37](https://github.com/vbfox/stidgen/issues/37)
+
 ### New in 0.5.0
 * Predefined types like `int` are now compared with their operators instead
   of relying on `Equals`.
