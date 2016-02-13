@@ -38,18 +38,20 @@ let private loadCsharpCode code =
         let isError (diagnostic:Diagnostic) = diagnostic.IsWarningAsError || diagnostic.Severity = DiagnosticSeverity.Error
         let failures = result.Diagnostics |> Seq.filter isError
         let failures = failures |> Seq.map (fun d -> sprintf "%s: %s" d.Id (d.GetMessage()))
-        let failures = System.String.Join(", ", failures)
+        let failures = System.String.Join("\r\n", failures)
 
-        raise (CompilationFailedException ("Compilation failed -> " + failures))
+        raise (CompilationFailedException ("Test compilation failed\r\n\r\n" + failures))
     else
         ms.Seek(0L, SeekOrigin.Begin) |> ignore
         Assembly.Load(ms.ToArray());
+
+type TestCode = { ClassName: string; Code: string }
 
 let private wrapTestCode code =
     let name = Guid.NewGuid().ToByteArray() |> Seq.map( fun b -> b.ToString("X2"))
     let name = System.String.Join("", name)
     let name = sprintf "CodeGen_UnitTest_%s" name
-    let template =sprintf "using System;
+    let template = sprintf "using System;
 using System;
 using System.Globalization;
 using System.Collections.Generic;
@@ -64,14 +66,14 @@ public static class %s
     }
 }
 "
-    template name code, name
+    { ClassName=name; Code=template name code }
 
 let runGeneratedTest idType test =
     let idTypeCode = idTypesToString [idType]
-    let testCode, testName = wrapTestCode test
+    let { Code=testCode; ClassName=className } = wrapTestCode test
     let assembly = loadCsharpCode [idTypeCode; testCode]
 
-    let type' = assembly.GetType(testName)
+    let type' = assembly.GetType(className)
     let method' = type'.GetMethod("RunTest")
     try
         method'.Invoke(null, null) |> ignore
