@@ -305,7 +305,7 @@ module private Equality =
         |> addBodyStatement body
 
     let private addOperators info (classDeclaration:StructDeclarationSyntax) =
-        let direct info expr = expr
+        let direct _ expr = expr
         let generated = info.GeneratedTypeSyntax
         let underlying = info.UnderlyingTypeSyntax
 
@@ -422,13 +422,76 @@ module private Casts =
             |?> (not underlyingIsNullable, addToUnderlyingTypeNullable info)
             |?> (not underlyingIsNullable, addFromUnderlyingTypeNullable info)
 
+/// Helpers to lift an interface implementation from the base type to the generated one
+module private InterfaceLift =
+    open System.Reflection
+
+    type getNullCheckType = MethodInfo -> ParsedInfo -> StatementSyntax
+
+    type InterfaceLiftParams =
+        {
+            Explicit: bool
+        } 
+    
+    type interfaceLift<'a> =
+        {
+            GetNullCheck : getNullCheckType
+            Info : ParsedInfo
+            Params : InterfaceLiftParams
+        }
+
+    let make<'i> getNullCheck params' info : interfaceLift<'i> =
+        { GetNullCheck=getNullCheck; Params=params'; Info=info }
+
+    let inline name (_ : interfaceLift<'a>) = namesyntaxof<'a>
+    let inline type' (_ : interfaceLift<'a>) = typeof<'a>
+
+    let private makeMember (m : MethodInfo) lift =
+        // Initial declaration
+        let returnType = NameSyntax.FromType m.ReturnType
+        let declaration = SyntaxFactory.MethodDeclaration(returnType, m.Name)
+        let declaration = 
+            if lift.Params.Explicit then
+                declaration.WithExplicitInterfaceSpecifier(SyntaxFactory.ExplicitInterfaceSpecifier(name lift))
+            else
+                declaration |> addModifiers [SyntaxKind.PublicKeyword]
+
+        // Add parameters
+        let parameters = m.GetParameters() |> Array.map (fun p -> (p.Name, NameSyntax.FromType p.ParameterType))
+        let declaration = parameters |> Seq.fold (fun decl (name, type') -> decl |> addParameter name type') declaration
+
+        // Body
+        let bodyCheck = lift.GetNullCheck m lift.Info
+        let parametersForCall = parameters |> Array.map (fun (name, _) -> identifier name :> ExpressionSyntax)
+        let bodyRet = 
+            ret
+                (invocation
+                    (lift.Info.ThisValueMemberAccess |> cast (name lift) |> memberAccess m.Name)
+                    parametersForCall)
+
+        // Add body
+        declaration
+            |?> (lift.Info.CanBeNull, addBodyStatement bodyCheck)
+            |> addBodyStatement bodyRet
+
+    let addAllMethods lift (classDeclaration : StructDeclarationSyntax) =
+        (type' lift).GetMethods()
+            |> Array.fold (fun decl m -> decl |> addMember (makeMember m lift)) classDeclaration
+
+    let isPossible lift = (type' lift).IsAssignableFrom(lift.Info.Id.UnderlyingType)
+
+    let addAllOf (decl : StructDeclarationSyntax) lift =
+        if isPossible lift then
+            decl
+            |> addAllMethods lift
+            |> addBaseTypes [| (name lift) |]
+        else
+            decl
+
 /// Implement IConvertible by calling System.Convert methods on the underlying type
 module private Convertible =
     open System.Reflection
     
-    let private iconvertible = typeof<IConvertible>
-    let private iconvertibleName = namesyntaxof<IConvertible>
-
     let private makeNullCheck (m : MethodInfo) info =
         match m.Name with
         | "ToType" -> 
@@ -440,10 +503,12 @@ module private Convertible =
                     [|
                         ret (invocation (dottedMemberAccess' ["System"; "Convert"; "ChangeType"]) [|Literal.Null; typeVariable|])
                     |])
+            :> StatementSyntax
         | "ToChar" -> 
             // To char always throw for null, so no need to call the static version
             let argName = m.GetParameters().[0].Name
             throwIfArgumentNull argName
+            :> StatementSyntax
         | _ ->
             // For other ToXXX methods call the static equivalent on System.Convert
             if'
@@ -452,44 +517,20 @@ module private Convertible =
                     [|
                         ret (invocation (dottedMemberAccess' ["System"; "Convert"; m.Name]) [|Literal.Null|])
                     |])
+            :> StatementSyntax
 
+    let addIConvertibleMembers info decl =
+        InterfaceLift.make<IConvertible> makeNullCheck { Explicit=true } info
+        |> InterfaceLift.addAllOf decl
 
-    let private makeMember (m : MethodInfo) info =
-        // Initial declaration
-        let returnType = NameSyntax.FromType m.ReturnType
-        let declaration =
-            SyntaxFactory.MethodDeclaration(returnType, m.Name)
-                .WithExplicitInterfaceSpecifier(SyntaxFactory.ExplicitInterfaceSpecifier(iconvertibleName))
+module private Formattable =
+    let private makeNullCheck _ _ =
+        ret Literal.EmptyString
+        :> StatementSyntax
 
-        // Add parameters
-        let parameters = m.GetParameters() |> Array.map (fun p -> (p.Name, NameSyntax.FromType p.ParameterType))
-        let declaration = parameters |> Seq.fold (fun decl (name, type') -> decl |> addParameter name type') declaration
-
-        // Body
-        let bodyCheck = makeNullCheck m info
-        let parametersForCall = parameters |> Array.map (fun (name, _) -> identifier name :> ExpressionSyntax)
-        let bodyRet = 
-            ret
-                (invocation
-                    (info.ThisValueMemberAccess |> cast iconvertibleName |> memberAccess m.Name)
-                    parametersForCall)
-
-        // Add body
-        declaration
-            |?> (info.CanBeNull, addBodyStatement bodyCheck)
-            |> addBodyStatement bodyRet
-
-    let private addIConvertibleMethods info (classDeclaration : StructDeclarationSyntax) =
-        iconvertible.GetMethods()
-            |> Array.fold (fun decl m -> decl |> addMember (makeMember m info)) classDeclaration
-
-    let addIConvertibleMembers info (classDeclaration : StructDeclarationSyntax) =
-        if iconvertible.IsAssignableFrom(info.Id.UnderlyingType) then
-            classDeclaration
-            |> addIConvertibleMethods info
-            |> addBaseTypes [| iconvertibleName |]
-        else
-            classDeclaration
+    let addFormattable info decl =
+        InterfaceLift.make<IFormattable> makeNullCheck { Explicit=false } info
+        |> InterfaceLift.addAllOf decl
 
 /// Transform all 'Parse' and 'TryParse' static methods from the underlying type to the ID type.
 /// Also generate a 'TryParse' returning a Nullable<T>
@@ -645,6 +686,7 @@ let private makeClass info =
         |> Casts.addAll info
         |> ParseMethods.addParseMethods info
         |> Convertible.addIConvertibleMembers info
+        |> Formattable.addFormattable info
         |> GeneratedCodeAttribute.addToAllMembers
 
 let private makeInfo idType =

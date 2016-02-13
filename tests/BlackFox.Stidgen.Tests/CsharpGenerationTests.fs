@@ -136,3 +136,23 @@ let ``ToString is lifted`` () =
     var instance = new Id(guid);
     Check.That(instance.ToString()).IsEqualTo(guid.ToString());
     "
+
+[<Test>]
+let ``IFormattable is lifted`` () =
+    let idType = makeIdFromType<double> id
+
+    runGeneratedTest idType @"
+    var dbl = 4.2;
+    var instance = new Id(dbl);
+    
+    Check.That(instance.ToString(""0.000""))
+        .IsEqualTo(dbl.ToString(""0.000""));
+
+    Check.That(instance.ToString(""0.000"", CultureInfo.InvariantCulture))
+        .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
+
+    Check.That(instance).IsInstanceOf<IFormattable>();
+    var formattable = (IFormattable)instance;
+    Check.That(formattable.ToString(""0.000"", CultureInfo.InvariantCulture))
+        .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
+    "
