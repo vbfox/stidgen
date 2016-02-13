@@ -28,6 +28,7 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
+/artifacts/
 
 # Visual Studo 2015 cache/options directory
 .vs/

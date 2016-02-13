@@ -11,6 +11,7 @@ open SourceLink
 #endif
 
 let rootDir = Path.GetFullPath(__SOURCE_DIRECTORY__ </> "..")
+let artifactsDir = rootDir </> "artifacts" 
 let nunitPath = rootDir </> @"packages" </> "NUnit.Runners" </> "tools"
 let binDir = rootDir </> "bin"
 let testsDir = binDir </> "tests"
@@ -96,6 +97,7 @@ Target "CopyBinaries" <| fun _ ->
 // Clean build results
 
 Target "Clean" <| fun _ ->
+    CleanDir artifactsDir
     CleanDir binDir
     
     !! solutionFile
