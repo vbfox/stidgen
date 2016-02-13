@@ -1,2 +1,2 @@
 FSharp.Core
-Microsoft.CodeAnalysis
+Microsoft.CodeAnalysis.CSharp.Workspaces

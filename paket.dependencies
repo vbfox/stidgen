@@ -4,7 +4,7 @@ redirects: on
 
 // Code
 nuget FSharp.Core ~> 4
-nuget Microsoft.CodeAnalysis ~> 1
+nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 1
 
 // Unit tests
 nuget NUnit ~> 2.6
