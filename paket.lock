@@ -1,33 +1,35 @@
+REDIRECTS: ON
 NUGET
-  remote: https://nuget.org/api/v2
+  remote: https://www.nuget.org/api/v2
   specs:
-    FAKE (4.6.4)
+    FAKE (4.20.0)
     FSharp.Core (4.0.0.1)
-    FsUnit (1.3.1)
+    FsUnit (1.4.1)
+      FSharp.Core (>= 3.1.2.5)
       NUnit (2.6.4)
     Microsoft.Bcl (1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
     Microsoft.Bcl.Build (1.0.21) - import_targets: false
-    Microsoft.CodeAnalysis (1.0.0)
-      Microsoft.CodeAnalysis.CSharp.Workspaces (1.0.0)
-      Microsoft.CodeAnalysis.VisualBasic.Workspaces (1.0.0)
-    Microsoft.CodeAnalysis.Analyzers (1.0.0)
-    Microsoft.CodeAnalysis.Common (1.0.0)
-      Microsoft.CodeAnalysis.Analyzers (1.0.0)
-      System.Collections.Immutable (>= 1.1.36)
-      System.Reflection.Metadata (>= 1.0.21)
-    Microsoft.CodeAnalysis.CSharp (1.0.0)
-      Microsoft.CodeAnalysis.Common (1.0.0)
-    Microsoft.CodeAnalysis.CSharp.Workspaces (1.0.0)
-      Microsoft.CodeAnalysis.CSharp (1.0.0)
-      Microsoft.CodeAnalysis.Workspaces.Common (1.0.0)
-    Microsoft.CodeAnalysis.VisualBasic (1.0.0)
-      Microsoft.CodeAnalysis.Common (>= 1.0.0)
-    Microsoft.CodeAnalysis.VisualBasic.Workspaces (1.0.0)
-      Microsoft.CodeAnalysis.VisualBasic (1.0.0)
-      Microsoft.CodeAnalysis.Workspaces.Common (1.0.0)
-    Microsoft.CodeAnalysis.Workspaces.Common (1.0.0)
-      Microsoft.CodeAnalysis.Common (1.0.0)
+    Microsoft.CodeAnalysis (1.1.1)
+      Microsoft.CodeAnalysis.CSharp.Workspaces (1.1.1)
+      Microsoft.CodeAnalysis.VisualBasic.Workspaces (1.1.1)
+    Microsoft.CodeAnalysis.Analyzers (1.1.0)
+    Microsoft.CodeAnalysis.Common (1.1.1)
+      Microsoft.CodeAnalysis.Analyzers (>= 1.1.0)
+      System.Collections.Immutable (>= 1.1.37)
+      System.Reflection.Metadata (>= 1.1.0)
+    Microsoft.CodeAnalysis.CSharp (1.1.1)
+      Microsoft.CodeAnalysis.Common (1.1.1)
+    Microsoft.CodeAnalysis.CSharp.Workspaces (1.1.1)
+      Microsoft.CodeAnalysis.CSharp (1.1.1)
+      Microsoft.CodeAnalysis.Workspaces.Common (1.1.1)
+    Microsoft.CodeAnalysis.VisualBasic (1.1.1)
+      Microsoft.CodeAnalysis.Common (>= 1.1.1)
+    Microsoft.CodeAnalysis.VisualBasic.Workspaces (1.1.1)
+      Microsoft.CodeAnalysis.VisualBasic (1.1.1)
+      Microsoft.CodeAnalysis.Workspaces.Common (1.1.1)
+    Microsoft.CodeAnalysis.Workspaces.Common (1.1.1)
+      Microsoft.CodeAnalysis.Common (1.1.1)
       Microsoft.Composition (>= 1.0.27)
     Microsoft.Composition (1.0.30)
     Microsoft.Net.Http (2.2.29)
@@ -36,118 +38,118 @@ NUGET
     NFluent (1.3.1)
     NUnit (2.6.4)
     NUnit.Runners (2.6.4)
-    Octokit (0.16.0)
+    Octokit (0.18.0)
       Microsoft.Net.Http
     SourceLink.Fake (1.1.0)
-    System.Collections (4.0.10)
+    System.Collections (4.0.10) - framework: dnxcore50
       System.Diagnostics.Debug (>= 4.0.0) - framework: dnxcore50
       System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
-      System.Runtime (>= 4.0.0)
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
       System.Runtime (>= 4.0.20) - framework: dnxcore50
       System.Runtime.Extensions (>= 4.0.0) - framework: dnxcore50
       System.Threading (>= 4.0.0) - framework: dnxcore50
     System.Collections.Immutable (1.1.37)
-      System.Collections (>= 4.0.0)
-      System.Diagnostics.Debug (>= 4.0.0)
-      System.Globalization (>= 4.0.0)
-      System.Linq (>= 4.0.0)
-      System.Resources.ResourceManager (>= 4.0.0)
-      System.Runtime (>= 4.0.0)
-      System.Runtime.Extensions (>= 4.0.0)
-      System.Threading (>= 4.0.0)
-    System.Diagnostics.Contracts (4.0.0) - framework: dnxcore50
-      System.Runtime (>= 4.0.0)
-    System.Diagnostics.Debug (4.0.10)
-      System.Runtime (>= 4.0.0)
-    System.Globalization (4.0.10)
-      System.Runtime (>= 4.0.0)
-    System.IO (4.0.10)
+      System.Collections (>= 4.0.0) - framework: dnxcore50
+      System.Diagnostics.Debug (>= 4.0.0) - framework: dnxcore50
       System.Globalization (>= 4.0.0) - framework: dnxcore50
-      System.Runtime (>= 4.0.20)
-      System.Text.Encoding (>= 4.0.0)
+      System.Linq (>= 4.0.0) - framework: dnxcore50
+      System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Runtime.Extensions (>= 4.0.0) - framework: dnxcore50
+      System.Threading (>= 4.0.0) - framework: dnxcore50
+    System.Diagnostics.Contracts (4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+    System.Diagnostics.Debug (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+    System.Globalization (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+    System.IO (4.0.10) - framework: dnxcore50
+      System.Globalization (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+      System.Text.Encoding (>= 4.0.0) - framework: dnxcore50
       System.Text.Encoding (>= 4.0.10) - framework: dnxcore50
       System.Text.Encoding.Extensions (>= 4.0.0) - framework: dnxcore50
       System.Threading (>= 4.0.0) - framework: dnxcore50
-      System.Threading.Tasks (>= 4.0.0)
-    System.Linq (4.0.0)
-      System.Collections (>= 4.0.10)
-      System.Diagnostics.Debug (>= 4.0.10)
-      System.Resources.ResourceManager (>= 4.0.0)
-      System.Runtime (>= 4.0.20)
-      System.Runtime.Extensions (>= 4.0.10)
-    System.Private.Uri (4.0.0) - framework: dnxcore50
-    System.Reflection (4.0.10)
-      System.IO (>= 4.0.0)
-      System.Reflection.Primitives (>= 4.0.0)
-      System.Runtime (>= 4.0.20)
-    System.Reflection.Extensions (4.0.0)
+      System.Threading.Tasks (>= 4.0.0) - framework: dnxcore50
+    System.Linq (4.0.0) - framework: dnxcore50
+      System.Collections (>= 4.0.10) - framework: dnxcore50
       System.Diagnostics.Debug (>= 4.0.10) - framework: dnxcore50
-      System.Reflection (>= 4.0.0)
+      System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+      System.Runtime.Extensions (>= 4.0.10) - framework: dnxcore50
+    System.Private.Uri (4.0.0) - framework: dnxcore50
+    System.Reflection (4.0.10) - framework: dnxcore50
+      System.IO (>= 4.0.0) - framework: dnxcore50
+      System.Reflection.Primitives (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+    System.Reflection.Extensions (4.0.0) - framework: dnxcore50
+      System.Diagnostics.Debug (>= 4.0.10) - framework: dnxcore50
+      System.Reflection (>= 4.0.0) - framework: dnxcore50
       System.Reflection (>= 4.0.10) - framework: dnxcore50
       System.Reflection.Primitives (>= 4.0.0) - framework: dnxcore50
       System.Reflection.TypeExtensions (>= 4.0.0) - framework: dnxcore50
       System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
-      System.Runtime (>= 4.0.0)
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
       System.Runtime (>= 4.0.20) - framework: dnxcore50
       System.Runtime.Extensions (>= 4.0.10) - framework: dnxcore50
-    System.Reflection.Metadata (1.0.22)
-      System.Collections (>= 4.0.0)
-      System.Collections.Immutable (>= 1.1.37)
-      System.Diagnostics.Debug (>= 4.0.0)
-      System.IO (>= 4.0.0)
-      System.Reflection (>= 4.0.0)
-      System.Reflection.Extensions (>= 4.0.0)
-      System.Reflection.Primitives (>= 4.0.0)
-      System.Resources.ResourceManager (>= 4.0.0)
-      System.Runtime (>= 4.0.0)
-      System.Runtime.Extensions (>= 4.0.0)
-      System.Runtime.InteropServices (>= 4.0.0)
-      System.Text.Encoding (>= 4.0.0)
-      System.Text.Encoding.Extensions (>= 4.0.0)
-      System.Threading (>= 4.0.0)
-    System.Reflection.Primitives (4.0.0)
-      System.Runtime (>= 4.0.0)
+    System.Reflection.Metadata (1.1.0)
+      System.Collections (>= 4.0.0) - framework: dnxcore50
+      System.Collections.Immutable (>= 1.1.37) - framework: dnxcore50, portable-net45+win80
+      System.Diagnostics.Debug (>= 4.0.0) - framework: dnxcore50
+      System.IO (>= 4.0.0) - framework: dnxcore50
+      System.Reflection (>= 4.0.0) - framework: dnxcore50
+      System.Reflection.Extensions (>= 4.0.0) - framework: dnxcore50
+      System.Reflection.Primitives (>= 4.0.0) - framework: dnxcore50
+      System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Runtime.Extensions (>= 4.0.0) - framework: dnxcore50
+      System.Runtime.InteropServices (>= 4.0.0) - framework: dnxcore50
+      System.Text.Encoding (>= 4.0.0) - framework: dnxcore50
+      System.Text.Encoding.Extensions (>= 4.0.0) - framework: dnxcore50
+      System.Threading (>= 4.0.0) - framework: dnxcore50
+    System.Reflection.Primitives (4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
       System.Threading (>= 4.0.0) - framework: dnxcore50
     System.Reflection.TypeExtensions (4.0.0) - framework: dnxcore50
       System.Diagnostics.Contracts (>= 4.0.0) - framework: dnxcore50
       System.Diagnostics.Debug (>= 4.0.10) - framework: dnxcore50
       System.Linq (>= 4.0.0) - framework: dnxcore50
-      System.Reflection (>= 4.0.0)
+      System.Reflection (>= 4.0.0) - framework: dnxcore50
       System.Reflection (>= 4.0.10) - framework: dnxcore50
       System.Reflection.Primitives (>= 4.0.0) - framework: dnxcore50
       System.Resources.ResourceManager (>= 4.0.0) - framework: dnxcore50
-      System.Runtime (>= 4.0.0)
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
       System.Runtime (>= 4.0.20) - framework: dnxcore50
       System.Runtime.Extensions (>= 4.0.10) - framework: dnxcore50
-    System.Resources.ResourceManager (4.0.0)
-      System.Globalization (>= 4.0.0)
-      System.Reflection (>= 4.0.0)
+    System.Resources.ResourceManager (4.0.0) - framework: dnxcore50
+      System.Globalization (>= 4.0.0) - framework: dnxcore50
+      System.Reflection (>= 4.0.0) - framework: dnxcore50
       System.Reflection (>= 4.0.10) - framework: dnxcore50
-      System.Runtime (>= 4.0.0)
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
       System.Runtime (>= 4.0.20) - framework: dnxcore50
     System.Runtime (4.0.20) - framework: dnxcore50
       System.Private.Uri (>= 4.0.0) - framework: dnxcore50
-    System.Runtime.Extensions (4.0.10)
-      System.Runtime (>= 4.0.20)
-    System.Runtime.Handles (4.0.0)
-      System.Runtime (>= 4.0.0)
-    System.Runtime.InteropServices (4.0.20)
-      System.Reflection (>= 4.0.0)
-      System.Reflection.Primitives (>= 4.0.0)
-      System.Runtime (>= 4.0.0)
-      System.Runtime.Handles (>= 4.0.0)
-    System.Text.Encoding (4.0.10)
-      System.Runtime (>= 4.0.0)
+    System.Runtime.Extensions (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.20) - framework: dnxcore50
+    System.Runtime.Handles (4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+    System.Runtime.InteropServices (4.0.20) - framework: dnxcore50
+      System.Reflection (>= 4.0.0) - framework: dnxcore50
+      System.Reflection.Primitives (>= 4.0.0) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Runtime.Handles (>= 4.0.0) - framework: dnxcore50
+    System.Text.Encoding (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
     System.Text.Encoding.Extensions (4.0.10) - framework: dnxcore50
-      System.Runtime (>= 4.0.0)
-      System.Text.Encoding (>= 4.0.10)
-    System.Threading (4.0.10)
-      System.Runtime (>= 4.0.0)
-      System.Threading.Tasks (>= 4.0.0)
-    System.Threading.Tasks (4.0.10)
-      System.Runtime (>= 4.0.0)
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Text.Encoding (>= 4.0.10) - framework: dnxcore50
+    System.Threading (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
+      System.Threading.Tasks (>= 4.0.0) - framework: dnxcore50
+    System.Threading.Tasks (4.0.10) - framework: dnxcore50
+      System.Runtime (>= 4.0.0) - framework: dnxcore50
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (e7f5ad5e90f03dd89068cb1374e8ddf4725de373)
+    modules/Octokit/Octokit.fsx (43c4800c5f132d2c2d6832a3a59232a64d83d4c0)
       Octokit

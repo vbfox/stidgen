@@ -94,7 +94,12 @@ Target "CopyBinaries" <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Clean build results
 
-Target "Clean" <| fun _ -> CleanDir binDir
+Target "Clean" <| fun _ ->
+    CleanDir binDir
+    
+    !! solutionFile
+    |> MSBuildRelease "" "Clean"
+    |> ignore
 
 // --------------------------------------------------------------------------------------
 // Build library & test project
