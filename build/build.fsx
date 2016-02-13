@@ -10,17 +10,16 @@ open System.IO
 open SourceLink
 #endif
 
+let configuration = "Release"
 let rootDir = Path.GetFullPath(__SOURCE_DIRECTORY__ </> "..")
-let artifactsDir = rootDir </> "artifacts" 
+let artifactsDir = rootDir </> "artifacts"
 let nunitPath = rootDir </> @"packages" </> "NUnit.Runners" </> "tools"
-let binDir = rootDir </> "bin"
-let testsDir = binDir </> "tests"
-let appBinDir = binDir </> "BlackFox.Stidgen"
+let appBinDir = artifactsDir </> "bin" </> "BlackFox.Stidgen" </> configuration
 
 let project = "stidgen"
 let summary = "Strongly Typed ID type Generator"
 let solutionFile  = rootDir </> project + ".sln"
-let testAssemblies = rootDir </> "tests/**/bin/Release/*.Tests.dll"
+let testAssemblies = artifactsDir </> "bin" </> "*.Tests" </> configuration </> "*.Tests.dll"
 let sourceProjects = rootDir </> "src/**/*.??proj"
 
 
@@ -84,21 +83,11 @@ Target "AssemblyInfo" <| fun _ ->
         | Vbproj -> CreateVisualBasicAssemblyInfo (folderName </> "My Project" </> "AssemblyInfo.vb") attributes
         )
 
-// Copies binaries from default VS location to expected bin folder
-// But keeps a subdirectory structure for each project in the 
-// src folder to support multiple project outputs
-Target "CopyBinaries" <| fun _ ->
-    CreateDir binDir
-    !! sourceProjects
-    |>  Seq.map (fun f -> ((System.IO.Path.GetDirectoryName f) </> "bin/Release", binDir </> (System.IO.Path.GetFileNameWithoutExtension f)))
-    |>  Seq.iter (fun (fromDir, toDir) -> CopyDir toDir fromDir (fun _ -> true))
-
 // --------------------------------------------------------------------------------------
 // Clean build results
 
 Target "Clean" <| fun _ ->
     CleanDir artifactsDir
-    CleanDir binDir
     
     !! solutionFile
     |> MSBuildRelease "" "Clean"
@@ -122,7 +111,7 @@ Target "RunTests" <| fun _ ->
              ToolPath = nunitPath
              DisableShadowCopy = true
              TimeOut = TimeSpan.FromMinutes 20.
-             OutputFile = testsDir + "TestResults.xml" })
+             OutputFile = artifactsDir  </> "TestResults.xml" })
 
 #if MONO
 #else
@@ -132,10 +121,14 @@ Target "RunTests" <| fun _ ->
 
 Target "SourceLink" (fun _ ->
     let baseUrl = sprintf "%s/%s/{0}/%%var2%%" gitRaw gitName
-    !! "src/**/*.??proj"
+    tracefn "SourceLink base URL: %s" baseUrl 
+    
+    !! sourceProjects
     |> Seq.iter (fun projFile ->
-        let proj = VsProj.LoadRelease projFile 
-        SourceLink.Index proj.CompilesNotLinked proj.OutputFilePdb __SOURCE_DIRECTORY__ baseUrl
+        let projectName = Path.GetFileNameWithoutExtension projFile
+        let proj = VsProj.LoadRelease projFile
+        tracefn "Generating SourceLink for %s on pdb: %s" projectName proj.OutputFilePdb
+        SourceLink.Index proj.CompilesNotLinked proj.OutputFilePdb rootDir baseUrl
     )
 )
 
@@ -144,7 +137,7 @@ Target "SourceLink" (fun _ ->
 // --------------------------------------------------------------------------------------
 // Build a Zip package
 
-let zipPath = binDir </> (sprintf "%s-%s.zip" project release.NugetVersion)
+let zipPath = artifactsDir </> (sprintf "%s-%s.zip" project release.NugetVersion)
 
 Target "Zip" (fun _ ->
     let comment = sprintf "%s v%s" project release.NugetVersion
@@ -152,7 +145,7 @@ Target "Zip" (fun _ ->
         !! (appBinDir </> "*.dll")
         ++ (appBinDir </> "*.config")
         ++ (appBinDir </> "*.exe")
-    ZipHelper.CreateZip appBinDir zipPath comment 7 false files
+    ZipHelper.CreateZip appBinDir zipPath comment 9 false files
 )
 
 // --------------------------------------------------------------------------------------
@@ -161,9 +154,10 @@ Target "Zip" (fun _ ->
 Target "NuGet" <| fun _ ->
     Paket.Pack <| fun p -> 
         { p with
-            OutputPath = binDir
+            OutputPath = artifactsDir
             Version = release.NugetVersion
-            ReleaseNotes = toLines release.Notes}
+            ReleaseNotes = toLines release.Notes
+            WorkingDir = appBinDir }
 
 Target "PublishNuget" <| fun _ ->
     let key =
@@ -171,7 +165,7 @@ Target "PublishNuget" <| fun _ ->
         | Some(key) -> key
         | None -> getUserPassword "NuGet key: "
         
-    Paket.Push <| fun p ->  { p with WorkingDir = binDir; ApiKey = key }
+    Paket.Push <| fun p ->  { p with WorkingDir = artifactsDir; ApiKey = key }
 
 // --------------------------------------------------------------------------------------
 // Release Scripts
@@ -214,18 +208,17 @@ Target "GitHubRelease" (fun _ ->
 // --------------------------------------------------------------------------------------
 // Empty targets for readability
 
-Target "Default" <| fun _ -> trace "Default target executed"
-Target "Release" <| fun _ -> trace "Release target executed"
-
-Target "Paket" <| fun _ -> trace "Paket should have been executed"
+Target "Default" DoNothing
+Target "Release" DoNothing
+Target "Paket" DoNothing
+Target "CI" DoNothing
 
 // --------------------------------------------------------------------------------------
 // Target dependencies
 
 "Clean"
-    ==> "AssemblyInfo"
+    ?=> "AssemblyInfo"
     ==> "Build"
-    ==> "CopyBinaries"
     ==> "RunTests"
     ==> "Default"
 
@@ -240,6 +233,10 @@ finalBinaries
     ==> "Zip"
     ==> "GitHubRelease"
     ==> "Release"
+
+"Clean" ==> "CI"    
+"Zip" ==> "CI"
+"NuGet" ==> "CI"
     
 finalBinaries
     ==> "NuGet"

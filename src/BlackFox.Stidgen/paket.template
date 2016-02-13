@@ -15,7 +15,7 @@ summary
 description
     Strongly Typed ID type Generator
 files
-    ../../bin/BlackFox.Stidgen/*.dll ==> tools
-    ../../bin/BlackFox.Stidgen/*.pdb ==> tools
-    ../../bin/BlackFox.Stidgen/*.exe ==> tools
-    ../../bin/BlackFox.Stidgen/*.config ==> tools
+    *.dll ==> tools
+    *.pdb ==> tools
+    *.exe ==> tools
+    *.config ==> tools
