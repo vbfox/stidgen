@@ -1,4 +1,4 @@
-﻿#r @"packages/FAKE/tools/FakeLib.dll"
+﻿#r @"../packages/FAKE/tools/FakeLib.dll"
 open Fake
 open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
@@ -6,20 +6,21 @@ open System
 open System.IO
 #if MONO
 #else
-#load "packages/SourceLink.Fake/tools/Fake.fsx"
+#load "../packages/SourceLink.Fake/tools/Fake.fsx"
 open SourceLink
 #endif
 
-let nunitPath = @"packages\NUnit.Runners\tools"
-let binDir = __SOURCE_DIRECTORY__ </> "bin"
+let rootDir = Path.GetFullPath(__SOURCE_DIRECTORY__ </> "..")
+let nunitPath = rootDir </> @"packages" </> "NUnit.Runners" </> "tools"
+let binDir = rootDir </> "bin"
 let testsDir = binDir </> "tests"
 let appBinDir = binDir </> "BlackFox.Stidgen"
 
 let project = "stidgen"
 let summary = "Strongly Typed ID type Generator"
-let solutionFile  = __SOURCE_DIRECTORY__ </> project + ".sln"
-let testAssemblies = __SOURCE_DIRECTORY__ </> "tests/**/bin/Release/*.Tests.dll"
-let sourceProjects = __SOURCE_DIRECTORY__ </> "src/**/*.??proj"
+let solutionFile  = rootDir </> project + ".sln"
+let testAssemblies = rootDir </> "tests/**/bin/Release/*.Tests.dll"
+let sourceProjects = rootDir </> "src/**/*.??proj"
 
 
 /// The profile where the project is posted
@@ -173,7 +174,7 @@ Target "PublishNuget" <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Release Scripts
 
-#load "paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
+#load "../paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 
 Target "GitRelease" (fun _ ->
     let remote =

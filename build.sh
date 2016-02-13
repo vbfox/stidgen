@@ -14,4 +14,4 @@ fi
 
 [ ! -e build.fsx ] && mono .paket/paket.exe update
 [ ! -e build.fsx ] && mono packages/FAKE/tools/FAKE.exe init.fsx
-mono packages/FAKE/tools/FAKE.exe "$@" --fsiargs -d:MONO "build.fsx"
+mono packages/FAKE/tools/FAKE.exe "$@" --fsiargs -d:MONO "build/build.fsx"
