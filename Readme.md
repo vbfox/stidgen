@@ -1,5 +1,5 @@
 Strongly Typed ID type Generator
--------------------------------
+================================
 
 [![Join the chat at https://gitter.im/vbfox/stidgen](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/vbfox/stidgen?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build status](https://ci.appveyor.com/api/projects/status/6ehdd4cam628ve57/branch/master?svg=true)](https://ci.appveyor.com/project/vbfox/stidgen/branch/master)
@@ -27,10 +27,22 @@ And generate for each type specified a type that can be used as a strongly-typed
 Installation
 ------------
 
-For now only via NuGet :
+The recommended way is via paket or nuget.
+
+For nuget :
 
     nuget install stidgen -ExcludeVersion -OutputDirectory packages
 
+For paket, add `nuget stidgen` to your `paket.dependencies` and then to
+install it :
+
+    /.paket/paket.exe install
+
+A **zip** file containing the latest released version can also be found in
+the [latest GitHub release](https://github.com/vbfox/stidgen/releases/latest).
+
+Usage
+-----
 
 Then to generate all files specified by a stidgen definition file :
 
