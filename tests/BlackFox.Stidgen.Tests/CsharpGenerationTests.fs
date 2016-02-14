@@ -151,8 +151,8 @@ let ``IFormattable is lifted`` () =
     Check.That(instance.ToString(""0.000"", CultureInfo.InvariantCulture))
         .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
 
-    Check.That(instance).IsInstanceOf<IFormattable>();
-    var formattable = (IFormattable)instance;
+    var formattable = instance as IFormattable;
+    Check.That(formattable).IsNotNull();
     Check.That(formattable.ToString(""0.000"", CultureInfo.InvariantCulture))
         .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
     "

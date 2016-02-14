@@ -440,7 +440,7 @@ module private InterfaceLift =
             Params : InterfaceLiftParams
         }
 
-    let make<'i> getNullCheck params' info : interfaceLift<'i> =
+    let makeLift<'i> getNullCheck params' info : interfaceLift<'i> =
         { GetNullCheck=getNullCheck; Params=params'; Info=info }
 
     let inline name (_ : interfaceLift<'a>) = namesyntaxof<'a>
@@ -461,8 +461,8 @@ module private InterfaceLift =
         let declaration = parameters |> Seq.fold (fun decl (name, type') -> decl |> addParameter name type') declaration
 
         // Body
-        let bodyCheck = lift.GetNullCheck m lift.Info
         let parametersForCall = parameters |> Array.map (fun (name, _) -> identifier name :> ExpressionSyntax)
+        let bodyCheck = lift.GetNullCheck m lift.Info
         let bodyRet = 
             ret
                 (invocation
@@ -471,7 +471,7 @@ module private InterfaceLift =
 
         // Add body
         declaration
-            |?> (lift.Info.CanBeNull, addBodyStatement bodyCheck)
+            |?> (lift.Info.CanBeNull, addBodyStatement (lift.GetNullCheck m lift.Info))
             |> addBodyStatement bodyRet
 
     let addAllMethods lift (classDeclaration : StructDeclarationSyntax) =
@@ -480,7 +480,7 @@ module private InterfaceLift =
 
     let isPossible lift = (type' lift).IsAssignableFrom(lift.Info.Id.UnderlyingType)
 
-    let addAllOf (decl : StructDeclarationSyntax) lift =
+    let addLiftedMethods lift (decl : StructDeclarationSyntax) =
         if isPossible lift then
             decl
             |> addAllMethods lift
@@ -491,6 +491,7 @@ module private InterfaceLift =
 /// Implement IConvertible by calling System.Convert methods on the underlying type
 module private Convertible =
     open System.Reflection
+    open InterfaceLift
     
     let private makeNullCheck (m : MethodInfo) info =
         match m.Name with
@@ -519,18 +520,45 @@ module private Convertible =
                     |])
             :> StatementSyntax
 
-    let addIConvertibleMembers info decl =
-        InterfaceLift.make<IConvertible> makeNullCheck { Explicit=true } info
-        |> InterfaceLift.addAllOf decl
+    let addIConvertibleMembers info =
+        let lift = makeLift<IConvertible> makeNullCheck { Explicit=true } info
+        addLiftedMethods lift
 
 module private Formattable =
-    let private makeNullCheck _ _ =
-        ret Literal.EmptyString
+    open System.Globalization
+    open InterfaceLift
+
+    let private makeNullCheck _ (info:ParsedInfo) =
+        if'
+            (equals info.ThisValueMemberAccess Literal.Null)
+            (ret Literal.EmptyString)
         :> StatementSyntax
 
+    let addToStringWithFormat lift (decl : StructDeclarationSyntax) =
+        let body =     
+            ret (
+                invocation
+                    (lift.Info.ThisValueMemberAccess |> memberAccess "ToString")
+                    [
+                        identifier "format"
+                        (namesyntaxof<CultureInfo> |> memberAccess "CurrentCulture")
+                    ]
+                )
+
+        let method' =
+            SyntaxFactory.MethodDeclaration(NameSyntax.String, "ToString")
+            |> addModifiers [SyntaxKind.PublicKeyword]
+            |> addParameter "format" NameSyntax.String
+            |?> (lift.Info.CanBeNull, addBodyStatement (makeNullCheck () lift.Info))
+            |> addBodyStatement body
+
+        decl |> addMember method'
+
     let addFormattable info decl =
-        InterfaceLift.make<IFormattable> makeNullCheck { Explicit=false } info
-        |> InterfaceLift.addAllOf decl
+        let lift = makeLift<IFormattable> makeNullCheck { Explicit=false } info
+        decl
+        |> addLiftedMethods lift
+        |?> (isPossible lift, addToStringWithFormat lift)
 
 /// Transform all 'Parse' and 'TryParse' static methods from the underlying type to the ID type.
 /// Also generate a 'TryParse' returning a Nullable<T>

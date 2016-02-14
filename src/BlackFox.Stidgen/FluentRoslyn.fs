@@ -12,24 +12,35 @@ module Operators =
     let (!!) t = Async.AwaitTask t
 
 type TypeSyntax with
+    /// void
     static member Void = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword))
+    /// object
     static member Object = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.ObjectKeyword))
+    /// string
     static member String = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword))
+    /// int
     static member Int = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword))
+    /// bool
     static member Bool = SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.BoolKeyword))
 
-module Literal = 
-    let Null = SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression)
-    let True = SyntaxFactory.LiteralExpression(SyntaxKind.TrueLiteralExpression)
-    let False = SyntaxFactory.LiteralExpression(SyntaxKind.FalseLiteralExpression)
+module Literal =
+    let inline private literalKeyword x = SyntaxFactory.LiteralExpression(x)
+    let inline private ofType t x = SyntaxFactory.LiteralExpression(t, x)
+    /// null
+    let Null = literalKeyword SyntaxKind.NullLiteralExpression
+    /// true
+    let True = literalKeyword SyntaxKind.TrueLiteralExpression
+    /// false
+    let False = literalKeyword SyntaxKind.FalseLiteralExpression
+    /// true or false
     let Bool (b:bool) = if b then True else False
-   
-    let String (s:string) =
-        SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(s))
+    /// "s"
+    let inline String (s:string) = SyntaxFactory.Literal(s) |> ofType SyntaxKind.StringLiteralExpression
+    /// ""
     let EmptyString = String ""
-
-    let Int (i:int) =
-        SyntaxFactory.LiteralExpression(SyntaxKind.NumericLiteralExpression, SyntaxFactory.Literal(i))
+    /// i
+    let inline Int (i:int) = SyntaxFactory.Literal(i) |> ofType SyntaxKind.NumericLiteralExpression
+    /// 0
     let Zero = Int 0
 
 let toSyntaxList (source : 't seq) = SyntaxFactory.List<'t>(source)
