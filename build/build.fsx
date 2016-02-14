@@ -105,6 +105,35 @@ Target "Build" <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner
 
+module AppveyorEx =
+    type TestResultsType =
+        | MsTest
+        | Xunit
+        | NUnit
+        | NUnit3
+        | JUnit
+
+    /// Uploads a test result file to make them visible in Test tab of the build console.
+    let UploadTestResult (testResultsType : TestResultsType) file =
+        if buildServer = BuildServer.AppVeyor then
+            let resultsType = (sprintf "%A" testResultsType).ToLower()
+            let url = sprintf "https://ci.appveyor.com/api/testresults/%s/%s" resultsType AppVeyor.AppVeyorEnvironment.JobId
+            use wc = new System.Net.WebClient()
+            try
+                wc.UploadFile(url, file) |> ignore
+                printfn "Successfully uploaded test results %s" file
+            with
+            | ex -> printfn "An error occurred while uploading %s:\r\n%O" file ex
+
+    /// Uploads all the test results ".xml" files in a directory to make them visible in Test tab of the build console.
+    let UploadTestResultsXml (testResultsType : TestResultsType) outputDir =
+        if buildServer = BuildServer.AppVeyor then
+            System.IO.Directory.EnumerateFiles(path = outputDir, searchPattern = "*.xml")
+            |> Seq.map(fun file -> async { UploadTestResult testResultsType file })
+            |> Async.Parallel
+            |> Async.RunSynchronously
+            |> ignore
+
 Target "RunTests" <| fun _ ->
     !! testAssemblies
       |> NUnit3 (fun p ->
@@ -114,6 +143,7 @@ Target "RunTests" <| fun _ ->
              DisposeRunners = true
              ResultSpecs = [artifactsDir  </> "TestResults.xml"] })
 
+    AppveyorEx.UploadTestResultsXml AppveyorEx.NUnit3 artifactsDir
 #if MONO
 #else
 // --------------------------------------------------------------------------------------
