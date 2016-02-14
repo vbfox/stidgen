@@ -40,7 +40,17 @@ let private loadCsharpCode code =
         let failures = failures |> Seq.map (fun d -> sprintf "%s: %s" d.Id (d.GetMessage()))
         let failures = System.String.Join("\r\n", failures)
 
-        raise (CompilationFailedException ("Test compilation failed\r\n\r\n" + failures))
+        let codeSources =
+            code
+            |> Seq.mapi(fun i text ->
+                let indented =
+                    text.Split([|"\r\n"; "\r"; "\n"|], StringSplitOptions.None)
+                    |> Seq.map (sprintf "\t%s")
+                    |> (fun x -> String.Join("\r\n",x))
+                sprintf "Source code %i:\r\n%s" i indented)
+            |> (fun x -> String.Join("\r\n\r\n",x))
+
+        raise (CompilationFailedException (sprintf "Test compilation failed\r\n\r\n%s\r\n\r\n%s" failures codeSources))
     else
         ms.Seek(0L, SeekOrigin.Begin) |> ignore
         Assembly.Load(ms.ToArray());
