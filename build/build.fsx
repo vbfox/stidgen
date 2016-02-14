@@ -153,8 +153,11 @@ module AppveyorEx =
             Type = None
         }
 
-    let private appendArgIfNotNullOrEmpty value name =
-        appendIfTrue (isNotNullOrEmpty value) (sprintf "-%s \"%s\"" name value)
+    let private appendArgIfNotNullOrEmpty value name builder =
+        if (isNotNullOrEmpty value) then
+            appendWithoutQuotes (sprintf "-%s \"%s\"" name value) builder
+        else
+            builder
 
     let PushArtifactEx (setParams : PushArtifactParams -> PushArtifactParams) =
         let parameters = setParams defaultPushArtifactParams
