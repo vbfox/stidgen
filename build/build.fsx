@@ -125,14 +125,54 @@ module AppveyorEx =
             with
             | ex -> printfn "An error occurred while uploading %s:\r\n%O" file ex
 
-    /// Uploads all the test results ".xml" files in a directory to make them visible in Test tab of the build console.
-    let UploadTestResultsXml (testResultsType : TestResultsType) outputDir =
-        if buildServer = BuildServer.AppVeyor then
-            System.IO.Directory.EnumerateFiles(path = outputDir, searchPattern = "*.xml")
-            |> Seq.map(fun file -> async { UploadTestResult testResultsType file })
-            |> Async.Parallel
-            |> Async.RunSynchronously
-            |> ignore
+    let private sendToAppVeyor args = 
+        ExecProcess (fun info -> 
+            info.FileName <- "appveyor"
+            info.Arguments <- args) (System.TimeSpan.MaxValue)
+        |> ignore
+        
+    /// Set environment variable
+    let SetVariable name value =
+        sendToAppVeyor <| sprintf "SetVariable -Name \"%s\" -Value \"%s\"" name value
+
+    type ArtifactType = Auto | WebDeployPackage
+
+    type PushArtifactParams =
+        {
+            Path: string
+            FileName: string
+            DeploymentName: string
+            Type: ArtifactType option
+        }
+        
+    let defaultPushArtifactParams =
+        {
+            Path = ""
+            FileName = ""
+            DeploymentName = ""
+            Type = None
+        }
+
+    let private appendArgIfNotNullOrEmpty value name =
+        appendIfTrue (isNotNullOrEmpty value) (sprintf "-%s \"%s\"" name value)
+
+    let PushArtifactEx (setParams : PushArtifactParams -> PushArtifactParams) =
+        let parameters = setParams defaultPushArtifactParams
+        new System.Text.StringBuilder()
+        |> append "PushArtifact"
+        |> append parameters.Path
+        |> appendArgIfNotNullOrEmpty parameters.FileName "FileName"
+        |> appendArgIfNotNullOrEmpty parameters.DeploymentName "DeploymentName"
+        |> appendIfSome parameters.Type (sprintf "-Type \"%A\"")
+        |> toText
+        |> sendToAppVeyor
+
+    let inline PushArtifact path =
+        PushArtifactEx (fun p ->
+            { p with
+                Path = path
+                FileName = Path.GetFileNameWithoutExtension(path)
+            })
 
 Target "RunTests" <| fun _ ->
     let testResults = artifactsDir</> "TestResults.xml"
@@ -178,6 +218,13 @@ Target "Zip" (fun _ ->
         ++ (appBinDir </> "*.config")
         ++ (appBinDir </> "*.exe")
     ZipHelper.CreateZip appBinDir zipPath comment 9 false files
+    
+    AppveyorEx.PushArtifactEx (fun p ->
+        { p with
+            Path = zipPath
+            FileName = Path.GetFileNameWithoutExtension(zipPath)
+            DeploymentName = "Binaries"
+        })
 )
 
 // --------------------------------------------------------------------------------------
@@ -190,6 +237,9 @@ Target "NuGet" <| fun _ ->
             Version = release.NugetVersion
             ReleaseNotes = toLines release.Notes
             WorkingDir = appBinDir }
+            
+    !! (artifactsDir </> "*.nupkg")
+    |> Seq.iter AppveyorEx.PushArtifact
 
 Target "PublishNuget" <| fun _ ->
     let key =

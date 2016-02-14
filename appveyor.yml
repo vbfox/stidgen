@@ -7,6 +7,3 @@ cache:
 build_script:
   - ps: .\build.cmd CI
 test: off
-artifacts:
-  - path: artifacts\*.nupkg
-  - path: artifacts\*.zip
