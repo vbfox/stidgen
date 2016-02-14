@@ -5,7 +5,7 @@ os: Windows Server 2012
 cache:
   - packages
 build_script:
-  - ps: .\build.cmd
+  - ps: .\build.cmd CI
 test: off
 artifacts:
   - path: artifacts\*.nupkg
