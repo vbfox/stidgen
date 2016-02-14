@@ -135,15 +135,16 @@ module AppveyorEx =
             |> ignore
 
 Target "RunTests" <| fun _ ->
+    let testResults = artifactsDir</> "TestResults.xml"
     !! testAssemblies
       |> NUnit3 (fun p ->
           {p with
              ToolPath = nunitPath
              TimeOut = TimeSpan.FromMinutes 20.
              DisposeRunners = true
-             ResultSpecs = [artifactsDir  </> "TestResults.xml"] })
+             ResultSpecs = [testResults] })
 
-    AppveyorEx.UploadTestResultsXml AppveyorEx.NUnit3 artifactsDir
+    AppveyorEx.UploadTestResult AppveyorEx.NUnit3 testResults
 #if MONO
 #else
 // --------------------------------------------------------------------------------------
