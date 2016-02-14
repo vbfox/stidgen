@@ -2,6 +2,7 @@
 open Fake
 open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
+open Fake.Testing.NUnit3
 open System
 open System.IO
 #if MONO
@@ -13,7 +14,7 @@ open SourceLink
 let configuration = "Release"
 let rootDir = Path.GetFullPath(__SOURCE_DIRECTORY__ </> "..")
 let artifactsDir = rootDir </> "artifacts"
-let nunitPath = rootDir </> @"packages" </> "NUnit.Runners" </> "tools"
+let nunitPath = rootDir </> @"packages" </> "NUnit.Console" </> "tools" </> "nunit3-console.exe"
 let appBinDir = artifactsDir </> "bin" </> "BlackFox.Stidgen" </> configuration
 
 let project = "stidgen"
@@ -106,12 +107,12 @@ Target "Build" <| fun _ ->
 
 Target "RunTests" <| fun _ ->
     !! testAssemblies
-      |> NUnit (fun p ->
+      |> NUnit3 (fun p ->
           {p with
              ToolPath = nunitPath
-             DisableShadowCopy = true
              TimeOut = TimeSpan.FromMinutes 20.
-             OutputFile = artifactsDir  </> "TestResults.xml" })
+             DisposeRunners = true
+             ResultSpecs = [artifactsDir  </> "TestResults.xml"] })
 
 #if MONO
 #else
