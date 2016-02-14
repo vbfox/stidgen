@@ -174,7 +174,7 @@ module AppveyorEx =
         PushArtifactEx (fun p ->
             { p with
                 Path = path
-                FileName = Path.GetFileNameWithoutExtension(path)
+                FileName = Path.GetFileName(path)
             })
 
 Target "RunTests" <| fun _ ->
@@ -225,7 +225,7 @@ Target "Zip" (fun _ ->
     AppveyorEx.PushArtifactEx (fun p ->
         { p with
             Path = zipPath
-            FileName = Path.GetFileNameWithoutExtension(zipPath)
+            FileName = Path.GetFileName(zipPath)
             DeploymentName = "Binaries"
         })
 )
