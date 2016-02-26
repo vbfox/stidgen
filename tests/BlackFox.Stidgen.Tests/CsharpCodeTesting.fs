@@ -55,13 +55,25 @@ let private loadCsharpCode code =
         ms.Seek(0L, SeekOrigin.Begin) |> ignore
         Assembly.Load(ms.ToArray());
 
-type TestCode = { ClassName: string; Code: string }
+type TestClassName = |TestClassName of string
+type TestMethodName = |TestMethodName of string
+type TestMethodContent = |TestMethodContent of string
+type OtherClasses = |OtherClasses of string
+type TestTemplate = TestClassName -> TestMethodName -> TestMethodContent -> string
+type TestCode = { ClassName: TestClassName; Code: string }
 
-let private wrapTestCode code =
-    let name = Guid.NewGuid().ToByteArray() |> Seq.map( fun b -> b.ToString("X2"))
-    let name = System.String.Join("", name)
+let private wrapTestCode code testMethodName (template:TestTemplate) =
+    let nameGuid = Guid.NewGuid().ToByteArray() |> Seq.map( fun b -> b.ToString("X2"))
+    let name = System.String.Join("", nameGuid)
     let name = sprintf "CodeGen_UnitTest_%s" name
-    let template = sprintf "using System;
+    let name = TestClassName name
+    { ClassName=name; Code=template name testMethodName code }
+
+let private genericTemplate otherCode name testMethodName testCode = 
+    let (TestClassName name) =  name
+    let (TestMethodName testMethodName) =  testMethodName
+    let (TestMethodContent testCode) =  testCode
+    let print = sprintf "using System;
 using System;
 using System.Globalization;
 using System.Collections.Generic;
@@ -70,17 +82,22 @@ using NUnit.Framework;
 
 public static class %s
 {
-    public static void RunTest()
+    public static void %s()
     {
         %s
     }
 }
-"
-    { ClassName=name; Code=template name code }
 
-let runGeneratedTest idType test =
+%s
+"
+    print name testMethodName testCode otherCode
+
+let private singleMethodTemplate = genericTemplate ""
+
+let private runGeneratedTestCore idType test template =
     let idTypeCode = idTypesToString [idType]
-    let { Code=testCode; ClassName=className } = wrapTestCode test
+    let { Code=testCode; ClassName=TestClassName(className) } =
+        wrapTestCode (TestMethodContent test) (TestMethodName "RunTest") template
     let assembly = loadCsharpCode [idTypeCode; testCode]
 
     let type' = assembly.GetType(className)
@@ -92,3 +109,7 @@ let runGeneratedTest idType test =
         // Remove the TargetInvocationException keeping the stacktrace
         let edi = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException)
         edi.Throw()
+
+let runGeneratedTest' idType test otherCode = runGeneratedTestCore idType test (genericTemplate otherCode)
+
+let runGeneratedTest idType test = runGeneratedTestCore idType test singleMethodTemplate

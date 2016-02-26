@@ -156,3 +156,23 @@ let ``IFormattable is lifted`` () =
     Check.That(formattable.ToString(""0.000"", CultureInfo.InvariantCulture))
         .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
     "
+
+[<Test>]
+let ``Check is called on creation`` () =
+    let idType = makeIdFromType<int> id
+
+    runGeneratedTest' idType @"
+    Check.ThatCode(() => new Id(-1)).Throws<InvalidOperationException>();
+    Check.ThatCode(() => new Id(0)).DoesNotThrow();
+    " @"
+    partial struct Id
+    {
+        partial void CheckValue(int value)
+        {
+            if (value < 0)
+            {
+                throw new InvalidOperationException(""Nope"");
+            }
+        }
+    }
+"
