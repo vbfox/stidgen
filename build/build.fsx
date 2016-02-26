@@ -160,15 +160,16 @@ module AppveyorEx =
             builder
 
     let PushArtifactEx (setParams : PushArtifactParams -> PushArtifactParams) =
-        let parameters = setParams defaultPushArtifactParams
-        new System.Text.StringBuilder()
-        |> append "PushArtifact"
-        |> append parameters.Path
-        |> appendArgIfNotNullOrEmpty parameters.FileName "FileName"
-        |> appendArgIfNotNullOrEmpty parameters.DeploymentName "DeploymentName"
-        |> appendIfSome parameters.Type (sprintf "-Type \"%A\"")
-        |> toText
-        |> sendToAppVeyor
+        if buildServer = BuildServer.AppVeyor then
+            let parameters = setParams defaultPushArtifactParams
+            new System.Text.StringBuilder()
+            |> append "PushArtifact"
+            |> append parameters.Path
+            |> appendArgIfNotNullOrEmpty parameters.FileName "FileName"
+            |> appendArgIfNotNullOrEmpty parameters.DeploymentName "DeploymentName"
+            |> appendIfSome parameters.Type (sprintf "-Type \"%A\"")
+            |> toText
+            |> sendToAppVeyor
 
     let inline PushArtifact path =
         PushArtifactEx (fun p ->
