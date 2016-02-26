@@ -1,7 +1,11 @@
-## New in 0.5.2
+### New in 0.5.3
+* Fix 'Check' methods being unusable.
+  [Issue #38](https://github.com/vbfox/stidgen/issues/38)
+
+### New in 0.5.2
 * Lift `System.IFormattable`
 
-## New in 0.5.1
+### New in 0.5.1
 * Add an option to enable DataContract serialization.
   [Issue #37](https://github.com/vbfox/stidgen/issues/37)
 
