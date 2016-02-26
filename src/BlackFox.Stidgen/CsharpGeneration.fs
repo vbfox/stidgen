@@ -132,8 +132,8 @@ let private makeCtor info =
     |> addModifiers [|SyntaxKind.PublicKeyword|]
     |> addParameter argName info.UnderlyingTypeSyntax
     |?> (not info.AllowNull && info.CanBeNull, addBodyStatement checkForNull)
-    |> addBodyStatement (invocationStatement (thisMemberAccess info.CheckMethodName) [arg])
     |> addBodyStatement assignProperty
+    |> addBodyStatement (invocationStatement (thisMemberAccess info.CheckMethodName) [info.ThisValueMemberAccess])
 
 let private returnCallVoidMethodOnValue name info =
     ret
