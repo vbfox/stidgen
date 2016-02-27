@@ -1,4 +1,7 @@
 ### New in 0.5.4
+* Added color output to the console
+* Display a message on the console when no file is matched and return '-1' as error level.
+ [Issue #16](https://github.com/vbfox/stidgen/issues/16)
 
 ### New in 0.5.3
 * Fix 'Check' methods being unusable.
