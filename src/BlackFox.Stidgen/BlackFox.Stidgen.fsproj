@@ -69,6 +69,7 @@
     <Compile Include="CsharpGeneration.fs" />
     <Compile Include="FileGeneration.fs" />
     <Compile Include="Globbing.fs" />
+    <Compile Include="ColoredString.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <None Include="paket.template">
