@@ -1,3 +1,5 @@
+### New in 0.5.4
+
 ### New in 0.5.3
 * Fix 'Check' methods being unusable.
   [Issue #38](https://github.com/vbfox/stidgen/issues/38)
