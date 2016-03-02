@@ -291,6 +291,16 @@ Target "GitHubRelease" (fun _ ->
     |> Async.RunSynchronously
 )
 
+Target "Pack" <| fun _ ->
+    Fake.ILMergeHelper.ILMerge
+        (fun p ->
+            { p with
+                Libraries = !! (appBinDir </> "*.dll")
+                ToolPath = rootDir </> "ilrepack.exe"
+            })
+        (artifactsDir </> "merged.exe")
+        (appBinDir </> "stidgen.exe")
+
 // --------------------------------------------------------------------------------------
 // Empty targets for readability
 
