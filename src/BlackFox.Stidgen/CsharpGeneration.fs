@@ -776,9 +776,20 @@ let makeRootNode (idTypes : IdType seq) =
 
 module DocumentGeneration =
     open System.Reflection
+    open Microsoft.CodeAnalysis.Host.Mef
+
+    let private createWorkspace () =
+        // Our own assembly is added to the list as when IL-merged it's where all the
+        // roslyn classes will be.
+        let assemblies =
+            MefHostServices.DefaultAssemblies
+            |> Seq.append [ Assembly.GetExecutingAssembly() ]
+
+        let hostServices = MefHostServices.Create(assemblies)
+        new AdhocWorkspace(hostServices)
 
     let private makeDocument (assemblies: Assembly seq) (rootNode:SyntaxNode) =
-        let workspace = new AdhocWorkspace()
+        let workspace = createWorkspace ()
         let project = workspace.AddProject("MyProject", LanguageNames.CSharp)
 
         let project =
