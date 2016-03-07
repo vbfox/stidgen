@@ -1,5 +1,6 @@
 ﻿#r @"../packages/FAKE/tools/FakeLib.dll"
 #load "TaskDefinitionHelper.fsx"
+#load "AppveyorEx.fsx"
 
 open Fake
 open Fake.AssemblyInfoFile
@@ -7,6 +8,7 @@ open Fake.ReleaseNotesHelper
 open Fake.Testing.NUnit3
 open System
 open System.IO
+open BlackFox
 open BlackFox.TaskDefinitionHelper
 
 #if MONO
@@ -109,79 +111,6 @@ task "Build" ["AssemblyInfo"] <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner
 
-module AppveyorEx =
-    type TestResultsType =
-        | MsTest
-        | Xunit
-        | NUnit
-        | NUnit3
-        | JUnit
-
-    /// Uploads a test result file to make them visible in Test tab of the build console.
-    let UploadTestResult (testResultsType : TestResultsType) file =
-        if buildServer = BuildServer.AppVeyor then
-            let resultsType = (sprintf "%A" testResultsType).ToLower()
-            let url = sprintf "https://ci.appveyor.com/api/testresults/%s/%s" resultsType AppVeyor.AppVeyorEnvironment.JobId
-            use wc = new System.Net.WebClient()
-            try
-                wc.UploadFile(url, file) |> ignore
-                printfn "Successfully uploaded test results %s" file
-            with
-            | ex -> printfn "An error occurred while uploading %s:\r\n%O" file ex
-
-    let private sendToAppVeyor args = 
-        ExecProcess (fun info -> 
-            info.FileName <- "appveyor"
-            info.Arguments <- args) (System.TimeSpan.MaxValue)
-        |> ignore
-        
-    /// Set environment variable
-    let SetVariable name value =
-        sendToAppVeyor <| sprintf "SetVariable -Name \"%s\" -Value \"%s\"" name value
-
-    type ArtifactType = Auto | WebDeployPackage
-
-    type PushArtifactParams =
-        {
-            Path: string
-            FileName: string
-            DeploymentName: string
-            Type: ArtifactType option
-        }
-        
-    let defaultPushArtifactParams =
-        {
-            Path = ""
-            FileName = ""
-            DeploymentName = ""
-            Type = None
-        }
-
-    let private appendArgIfNotNullOrEmpty value name builder =
-        if (isNotNullOrEmpty value) then
-            appendWithoutQuotes (sprintf "-%s \"%s\"" name value) builder
-        else
-            builder
-
-    let PushArtifactEx (setParams : PushArtifactParams -> PushArtifactParams) =
-        if buildServer = BuildServer.AppVeyor then
-            let parameters = setParams defaultPushArtifactParams
-            new System.Text.StringBuilder()
-            |> append "PushArtifact"
-            |> append parameters.Path
-            |> appendArgIfNotNullOrEmpty parameters.FileName "FileName"
-            |> appendArgIfNotNullOrEmpty parameters.DeploymentName "DeploymentName"
-            |> appendIfSome parameters.Type (sprintf "-Type \"%A\"")
-            |> toText
-            |> sendToAppVeyor
-
-    let inline PushArtifact path =
-        PushArtifactEx (fun p ->
-            { p with
-                Path = path
-                FileName = Path.GetFileName(path)
-            })
-
 task "RunTests" [ "Build"] <| fun _ ->
     let testResults = artifactsDir</> "TestResults.xml"
     !! testAssemblies
@@ -192,7 +121,7 @@ task "RunTests" [ "Build"] <| fun _ ->
              DisposeRunners = true
              ResultSpecs = [testResults] })
 
-    AppveyorEx.UploadTestResult AppveyorEx.NUnit3 testResults
+    AppVeyor.UploadTestResultsFile AppVeyor.NUnit3 testResults
 #if MONO
 let finalBinaries = "Default"
 #else
