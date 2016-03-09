@@ -31,7 +31,7 @@ let sourceProjects = rootDir </> "src/**/*.??proj"
 
 
 /// The profile where the project is posted
-let gitOwner = "vbfox" 
+let gitOwner = "vbfox"
 let gitHome = "https://github.com/" + gitOwner
 
 /// The name of the project on GitHub
@@ -47,7 +47,7 @@ let gitRaw = environVarOrDefault "gitRaw" ("https://raw.github.com/" + gitOwner)
 // Parameter helpers to be able to get parameters from either command line or environment
 let getParamOrDefault name value = environVarOrDefault name <| getBuildParamOrDefault name value
 
-let getParam name = 
+let getParam name =
     let str = getParamOrDefault name ""
     match str with
         | "" -> None
@@ -57,7 +57,7 @@ let getParam name =
 let release = LoadReleaseNotes "Release Notes.md"
 
 // Helper active pattern for project types
-let (|Fsproj|Csproj|Vbproj|) (projFileName:string) = 
+let (|Fsproj|Csproj|Vbproj|) (projFileName:string) =
     match projFileName with
     | f when f.EndsWith("fsproj") -> Fsproj
     | f when f.EndsWith("csproj") -> Csproj
@@ -75,7 +75,7 @@ task "AssemblyInfo" ["?Clean"] <| fun _ ->
 
     let getProjectDetails projectPath =
         let projectName = System.IO.Path.GetFileNameWithoutExtension(projectPath)
-        ( projectPath, 
+        ( projectPath,
           projectName,
           System.IO.Path.GetDirectoryName(projectPath),
           (getAssemblyInfoAttributes projectName)
@@ -95,7 +95,7 @@ task "AssemblyInfo" ["?Clean"] <| fun _ ->
 
 task "Clean" [] <| fun _ ->
     CleanDir artifactsDir
-    
+
     !! solutionFile
     |> MSBuildRelease "" "Clean"
     |> ignore
@@ -132,8 +132,8 @@ let finalBinaries = "Build"
 #else
 task "SourceLink" [ "Build" ] <| fun _ ->
     let baseUrl = sprintf "%s/%s/{0}/%%var2%%" gitRaw gitName
-    tracefn "SourceLink base URL: %s" baseUrl 
-    
+    tracefn "SourceLink base URL: %s" baseUrl
+
     !! sourceProjects
     |> Seq.iter (fun projFile ->
         let projectName = Path.GetFileNameWithoutExtension projFile
@@ -160,8 +160,8 @@ task "Zip" ["FinalBinaries"] <| fun _ ->
         ++ (appBinDir </> "*.config")
         ++ (appBinDir </> "*.exe")
     ZipHelper.CreateZip appBinDir zipPath comment 9 false files
-    
-    AppveyorEx.PushArtifactEx (fun p ->
+
+    AppveyorEx.PushArtifact (fun p ->
         { p with
             Path = zipPath
             FileName = Path.GetFileName(zipPath)
@@ -172,22 +172,22 @@ task "Zip" ["FinalBinaries"] <| fun _ ->
 // Build a NuGet package
 
 task "NuGet" ["FinalBinaries"] <| fun _ ->
-    Paket.Pack <| fun p -> 
+    Paket.Pack <| fun p ->
         { p with
             OutputPath = artifactsDir
             Version = release.NugetVersion
             ReleaseNotes = toLines release.Notes
             WorkingDir = appBinDir }
-            
+
     !! (artifactsDir </> "*.nupkg")
-    |> Seq.iter AppveyorEx.PushArtifact
+    |> AppveyorEx.PushArtifacts
 
 task "PublishNuget" ["NuGet"] <| fun _ ->
     let key =
         match getParam "nuget-key" with
         | Some(key) -> key
         | None -> getUserPassword "NuGet key: "
-        
+
     Paket.Push <| fun p ->  { p with WorkingDir = artifactsDir; ApiKey = key }
 
 // --------------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ task "GitRelease" [] <| fun _ ->
         |> Seq.filter (fun (s: string) -> s.EndsWith("(push)"))
         |> Seq.tryFind (fun (s: string) -> s.Contains(gitOwner + "/" + gitName))
         |> function None -> gitHome + "/" + gitName | Some (s: string) -> s.Split().[0]
-            
+
     Git.Staging.StageAll ""
     Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
     Git.Branches.pushBranch "" remote (Git.Information.getBranchName "")
@@ -221,8 +221,8 @@ task "GitHubRelease" ["Zip"] <| fun _ ->
 
     // release on github
     Octokit.createClient user pw
-    |> Octokit.createDraft gitOwner gitName release.NugetVersion (release.SemVer.PreRelease <> None) release.Notes 
-    |> Octokit.uploadFile zipPath    
+    |> Octokit.createDraft gitOwner gitName release.NugetVersion (release.SemVer.PreRelease <> None) release.Notes
+    |> Octokit.uploadFile zipPath
     |> Octokit.releaseDraft
     |> Async.RunSynchronously
 

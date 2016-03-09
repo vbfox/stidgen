@@ -5,13 +5,13 @@ namespace BlackFox
 module AppveyorEx =
     open Fake
     open System.IO
-    
-    let private sendToAppVeyor args = 
-        ExecProcess (fun info -> 
+
+    let private sendToAppVeyor args =
+        ExecProcess (fun info ->
             info.FileName <- "appveyor"
             info.Arguments <- args) (System.TimeSpan.MaxValue)
         |> ignore
-        
+
     /// Set environment variable
     let SetVariable name value =
         sendToAppVeyor <| sprintf "SetVariable -Name \"%s\" -Value \"%s\"" name value
@@ -20,18 +20,22 @@ module AppveyorEx =
 
     type PushArtifactParams =
         {
+            /// The full local path to the artifact
             Path: string
+            /// File name to display in the artifact tab
             FileName: string
+            /// Deployment name
             DeploymentName: string
-            Type: ArtifactType option
+            /// Type of the artifact
+            Type: ArtifactType
         }
-        
+
     let defaultPushArtifactParams =
         {
             Path = ""
             FileName = ""
             DeploymentName = ""
-            Type = None
+            Type = Auto
         }
 
     let private appendArgIfNotNullOrEmpty value name builder =
@@ -40,7 +44,8 @@ module AppveyorEx =
         else
             builder
 
-    let PushArtifactEx (setParams : PushArtifactParams -> PushArtifactParams) =
+    /// Push an artifact
+    let PushArtifact (setParams : PushArtifactParams -> PushArtifactParams) =
         if buildServer = BuildServer.AppVeyor then
             let parameters = setParams defaultPushArtifactParams
             new System.Text.StringBuilder()
@@ -48,13 +53,12 @@ module AppveyorEx =
             |> append parameters.Path
             |> appendArgIfNotNullOrEmpty parameters.FileName "FileName"
             |> appendArgIfNotNullOrEmpty parameters.DeploymentName "DeploymentName"
-            |> appendIfSome parameters.Type (sprintf "-Type \"%A\"")
+            |> appendArgIfNotNullOrEmpty (sprintf "%A" parameters.Type) "Type"
             |> toText
             |> sendToAppVeyor
 
-    let inline PushArtifact path =
-        PushArtifactEx (fun p ->
-            { p with
-                Path = path
-                FileName = Path.GetFileName(path)
-            })
+    /// Push multiple artifacts
+    let PushArtifacts paths =
+        if buildServer = BuildServer.AppVeyor then
+            for path in paths do
+                PushArtifact (fun p -> { p with Path = path; FileName = Path.GetFileName(path) })
