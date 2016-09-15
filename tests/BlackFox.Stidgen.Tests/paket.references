@@ -3,3 +3,4 @@ Microsoft.CodeAnalysis.CSharp.Workspaces
 NUnit
 NFluent
 FsUnit
+FParsec

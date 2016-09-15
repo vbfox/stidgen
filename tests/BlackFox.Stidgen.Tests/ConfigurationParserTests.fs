@@ -2,6 +2,7 @@
 
 open BlackFox.Stidgen.ConfigurationParser
 open BlackFox.Stidgen.Description
+open BlackFox.Stidgen.Control
 open FsUnit
 open NUnit.Framework
 
@@ -140,14 +141,11 @@ let ``Property FileName with value`` () =
 let ``Property FileName without value`` () =
     propertyTest "FileName" "" Option.None (fun t -> t.FileName)
 
-let expectError line textContent conf =
-    conf.Errors
-        |> Seq.exists (fun error -> error.Line.Number = line && error.ErrorText.Contains(textContent))
-        |> should equal true
-
-let expectSingleError line textContent conf =
-    expectError line textContent conf
-    conf.Errors.Length |> should equal 1
+let expectParseError textContent conf =
+    match conf.Result with
+    | Failure (ConfigurationParser.ParseError(msg, _)) ->
+        msg |> should contain textContent
+    | _ -> failwithf "Expected a parse error but got %A" conf.Result
 
 [<Test>]
 let ``Invalid type no space`` () =
@@ -155,7 +153,7 @@ let ``Invalid type no space`` () =
         ([
             "HelloWorld"
         ] |> loadFromLines)
-    conf |> expectSingleError 1 "Invalid type definition, should contain one space"
+    conf |> expectParseError "Error in Ln: 1 Col: 1"
 
 [<Test>]
 let ``Invalid type too much space`` () =
@@ -163,7 +161,7 @@ let ``Invalid type too much space`` () =
         ([
             "Hello World 42"
         ] |> loadFromLines)
-    conf |> expectSingleError 1 "Invalid type definition, should contain one space"
+    conf |> expectParseError "Error in Ln: 1 Col: 1"
 
 [<Test>]
 let ``Invalid type and valid types`` () =
@@ -174,9 +172,7 @@ let ``Invalid type and valid types`` () =
             "public SomeName.Space.TypeName<string>"
             "public SomeName.Space.OtherTypeName<string>"
         ] |> loadFromLines)
-    conf |> expectSingleError 2 "Invalid type definition, should contain one space"
-
-    conf.Types.Length |> should equal 3
+    conf |> expectParseError "Error in Ln: 2 Col: 1"
 
 [<Test>]
 let ``Invalid type no underlying`` () =
@@ -184,7 +180,7 @@ let ``Invalid type no underlying`` () =
         ([
             "public HelloWorld"
         ] |> loadFromLines)
-    conf |> expectSingleError 1 "Invalid type definition, should contain an underlying type between <>"
+    conf |> expectParseError "Error in Ln: 1 Col: 18"
 
 [<Test>]
 let ``Invalid type no underlying end`` () =
@@ -192,7 +188,7 @@ let ``Invalid type no underlying end`` () =
         ([
             "public HelloWorld<int"
         ] |> loadFromLines)
-    conf |> expectSingleError 1 "Invalid type definition, should end with > like"
+    conf |> expectParseError "Error in Ln: 1 Col: 22"
 
 [<Test>]
 let ``Invalid type invalid underlying type`` () =
@@ -200,7 +196,7 @@ let ``Invalid type invalid underlying type`` () =
         ([
             "public HelloWorld<System.DoNotExists>"
         ] |> loadFromLines)
-    conf |> expectSingleError 1 "Type 'System.DoNotExists' not found."
+    conf |> expectParseError "Type 'System.DoNotExists' not found."
 
 [<Test>]
 let ``Property with invalid delimiter`` () =
@@ -209,7 +205,7 @@ let ``Property with invalid delimiter`` () =
             "public TestId<int>"
             "    Test=Value"
         ] |> loadFromLines)
-    conf |> expectSingleError 2 "Invalid property definition, should be 'name:value'"
+    conf |> expectParseError "Error in Ln: 2 Col: 5"
 
 [<Test>]
 let ``Property without type`` () =
@@ -217,7 +213,7 @@ let ``Property without type`` () =
         ([
             "    AllowNull:true"
         ] |> loadFromLines)
-    conf |> expectSingleError 1 "Property line associated with no valid type"
+    conf |> expectParseError "Error in Ln: 1 Col: 5"
 
 [<Test>]
 let ``Property with invalid type`` () =
@@ -226,4 +222,4 @@ let ``Property with invalid type`` () =
             "42"
             "    AllowNull:true"
         ] |> loadFromLines)
-    conf |> expectError 2 "Property line associated with no valid type"
+    conf |> expectParseError "Error in Ln: 1 Col: 1"

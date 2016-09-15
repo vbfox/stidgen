@@ -1,6 +1,7 @@
 ﻿module BlackFox.Stidgen.Program
 
 open BlackFox
+open BlackFox.Stidgen.Control
 
 type RunResults = FileGeneration.GenerationResult list
 
@@ -29,10 +30,17 @@ let private printSuccessResult (result:FileGeneration.GenerationResult) =
 
 let private printErrorResult (result:FileGeneration.GenerationResult) = 
     sprintf "^[red]Errors in ^[yellow]%s^[red]:" result.Configuration.Path.Value |> coloredWriteLine
-    for error in result.Configuration.Errors do
-        sprintf "^[red]\t%O" error |> coloredWriteLine
-        sprintf "^[red]\t\tContent: %s" error.Line.Text |> coloredWriteLine
-    printfn ""
+
+    match result.Configuration.Result with
+    | Success _ -> failwith "Unexpected success"
+    | Failure (ConfigurationParser.InvalidUnderlyingTypes(types)) ->
+        sprintf "^[red]\tUnable to resolve the following underlying types:" |> coloredWriteLine
+        for t in types do
+            let underlying = System.String.Join(".", t.UnderlyingType)
+            let targetType = System.String.Join(".", t.FullName)
+            sprintf "^[darkred]\t * ^[red]%s (In %s)" underlying targetType |> coloredWriteLine
+    | Failure (ConfigurationParser.ParseError(msg, _)) ->
+        sprintf "^[red]\t%s" (msg.Replace("\r\n", "\r\n\t")) |> coloredWriteLine
 
 let private printResult (results: (string*RunResults) list) =
     for glob, results in results do

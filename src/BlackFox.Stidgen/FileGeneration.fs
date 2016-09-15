@@ -1,6 +1,7 @@
 ﻿module BlackFox.Stidgen.FileGeneration
 
 open BlackFox.Stidgen.Description
+open BlackFox.Stidgen.Control
 open System
 open System.IO
 
@@ -66,16 +67,17 @@ let generateToFiles configurationPath =
     let configurationInfo = new FileInfo(configurationPath)
     let configuration = ConfigurationParser.loadFromFile configurationInfo
     
-    if configuration.HasErrors() then
+    match configuration.Result with
+    | Failure _ ->
         {
             Configuration = configuration
             Files = List.empty
         }
-    else
+    | Success types ->
         match configuration.Path with
         | Some(path) ->
             let files =
-                getFilesAndContentAsync path configuration.Types
+                getFilesAndContentAsync path types
                 |> Async.RunSynchronously
                 |> List.ofArray
             let result = 
