@@ -30,6 +30,27 @@ let ``Multiple types`` () =
     types.[2].Name |> should equal "TypeName"
 
 [<Test>]
+let ``Can load text with comments in the middle`` () = 
+    let types =
+        ([
+            "public SomeName.Space.TypeName<string>"
+            "#Comment"
+            "AllowNull: true"
+            "public SomeName.Space.TypeName2<string>"
+        ] |> loadFromLines).Types
+    types.Length |> should equal 2
+
+[<Test>]
+let ``Can load text with comments#`` () = 
+    let types =
+        ([
+            "# This is a comment"
+            ""
+            "public SomeName.Space.TypeName<string>"
+        ] |> loadFromLines).Types
+    types.Length |> should equal 1
+
+[<Test>]
 let ``Can load text with comments`` () = 
     let types =
         ([
@@ -147,6 +168,16 @@ let expectParseError textContent conf =
         msg |> should contain textContent
     | _ -> failwithf "Expected a parse error but got %A" conf.Result
 
+let expectInvalidTypes types conf =
+    match conf.Result with
+    | Failure (ConfigurationParser.InvalidUnderlyingTypes(invalidTypes)) ->
+        let invalidTypes = invalidTypes |> List.map (fun t -> System.String.Join(".", t.UnderlyingType)) |> List.sort
+        let types = types |> List.sort
+
+        invalidTypes |> should equal types
+
+    | _ -> failwithf "Expected a parse error but got %A" conf.Result
+
 [<Test>]
 let ``Invalid type no space`` () =
     let conf =
@@ -196,7 +227,7 @@ let ``Invalid type invalid underlying type`` () =
         ([
             "public HelloWorld<System.DoNotExists>"
         ] |> loadFromLines)
-    conf |> expectParseError "Type 'System.DoNotExists' not found."
+    conf |> expectInvalidTypes ["System.DoNotExists"]
 
 [<Test>]
 let ``Property with invalid delimiter`` () =

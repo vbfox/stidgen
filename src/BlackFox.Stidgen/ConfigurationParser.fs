@@ -27,7 +27,7 @@ module Combinators =
     open System
     open System.Globalization
 
-    let private pVisibility = stringReturn "internal" ClassVisibility.Internal <|> stringReturn "public" ClassVisibility.Public
+    let private pVisibility = (stringReturn "internal" ClassVisibility.Internal) <|> (stringReturn "public" ClassVisibility.Public)
     let private identifier =
         let identifierFirstLetterCats =
             [
@@ -59,6 +59,8 @@ module Combinators =
     let private skipSpaceOrTab = skipManySatisfy (fun c -> c = ' ' || c = '\t')
     let private skipSpaceOrTab1 = skipMany1Satisfy (fun c -> c = ' ' || c = '\t')
 
+    let private pComment = (pstring "#" <|> pstring "//") >>. restOfLine false
+
     let private pTypeDefinition =
         skipSpaceOrTab
         >>. pVisibility
@@ -85,10 +87,11 @@ module Combinators =
             pProperty "FileName" pOptionalString FileName
             pProperty "ValueProperty" pForcedString ValueProperty
         ]
-    let private pPropertyLine = skipSpaceOrTab >>? pProperties
+    let private pPropertyLine = skipSpaceOrTab >>. pProperties
 
-    let private newLines = manySatisfy (fun c -> c = '\r' || c = '\n' || c = ' '|| c = '\t')
-    let private newLines1 = many1Satisfy (fun c -> c = '\r' || c = '\n' || c = ' '|| c = '\t')
+    let private isNewlineOrSpace = fun c -> c = '\r' || c = '\n' || c = ' '|| c = '\t'
+    let private newLines = many (many1Satisfy isNewlineOrSpace <|> pComment)
+    let private newLines1 = satisfy isNewlineOrSpace >>. newLines
 
     let private parsedToConfig (((visibility, fullName), underlyingType), properties) =
         {
@@ -98,7 +101,7 @@ module Combinators =
             Properties = match properties with |Some(props) -> props |Option.None -> []
         }
 
-    let private pTypeLines = pTypeDefinition .>>. opt (skipNewline >>? sepBy1BacktrackEnd pPropertyLine newLines1) |>> parsedToConfig
+    let private pTypeLines = pTypeDefinition .>>. opt (newLines >>? sepBy1BacktrackEnd pPropertyLine newLines1) |>> parsedToConfig
 
     let private pFile = newLines >>. sepEndBy pTypeLines newLines1 .>> eof
 
@@ -150,6 +153,7 @@ let idTypeConfigToIdType config =
             let withProperties = config.Properties |> List.fold applyProperty idType
             { withProperties with
                 Name = config.FullName |> List.last
+                Visibility = config.Visibility
                 Namespace = System.String.Join(".", config.FullName |> List.take (config.FullName.Length-1))
             }
         ))
