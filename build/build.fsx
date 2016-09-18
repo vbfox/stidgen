@@ -20,7 +20,7 @@ open SourceLink
 let configuration = "Release"
 let rootDir = Path.GetFullPath(__SOURCE_DIRECTORY__ </> "..")
 let artifactsDir = rootDir </> "artifacts"
-let nunitPath = rootDir </> @"packages" </> "NUnit.Console" </> "tools" </> "nunit3-console.exe"
+let nunitPath = rootDir </> @"packages" </> "NUnit.ConsoleRunner" </> "tools" </> "nunit3-console.exe"
 let appBinDir = artifactsDir </> "bin" </> "BlackFox.Stidgen" </> configuration
 
 let project = "stidgen"
