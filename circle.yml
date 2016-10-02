@@ -5,4 +5,5 @@ dependencies:
     - sudo apt-get update; sudo apt-get install mono-complete
 test:
   override:
+    - export TERM=xterm-256color
     - ./build.sh CI
