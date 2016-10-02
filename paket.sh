@@ -1,9 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-mono .paket/paket.bootstrapper.exe 3.19.4 -s
-exit_code=$?
-if [ $exit_code -ne 0 ]; then
-  exit $exit_code
-fi
+PAKET_VERSION=3.20.2
 
-mono .paket/paket.exe $@
+function dotnet { if test "$OS" = "Windows_NT"; then $@; else mono $@; fi }
+
+dotnet .paket/paket.bootstrapper.exe -s $PAKET_VERSION  || { exit $?; }
+dotnet .paket/paket.exe $@

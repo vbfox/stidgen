@@ -3,6 +3,7 @@
 namespace BlackFox
 
 /// Allow to define FAKE tasks with a syntax similar to Gulp tasks
+[<AutoOpen>]
 module TaskDefinitionHelper =
     open Fake
     open System.Text.RegularExpressions
@@ -25,19 +26,19 @@ module TaskDefinitionHelper =
         | dep -> Direct dep
 
     let mutable private tasks : (string * (Dependency list)) list = []
-    
+
     /// Define a task with it's dependencies
-    let taskEx name dependencies body =
+    let TaskEx name dependencies body =
         Target name body
         tasks <- (name, dependencies |> List.ofSeq) :: tasks
 
     /// Define a task with it's dependencies
-    let task name dependencies body =
+    let Task name dependencies body =
         let dependencies = dependencies |> Seq.map parseDependency
-        taskEx name dependencies body
+        TaskEx name dependencies body
 
     /// Send all the defined inter task dependencies to FAKE
-    let applyTasksDependencies () =
+    let ApplyTasksDependencies () =
          for (targetName, dependencies) in tasks do
             for dependency in dependencies do
                 match dependency with
@@ -49,6 +50,6 @@ module TaskDefinitionHelper =
 
     /// Run the task specified on the command line if there was one or the
     /// default one otherwise.
-    let runTaskOrDefault taskName =
-        applyTasksDependencies ()
+    let RunTaskOrDefault taskName =
+        ApplyTasksDependencies ()
         RunTargetOrDefault taskName

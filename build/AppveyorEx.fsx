@@ -1,64 +1,61 @@
-#r @"../packages/FAKE/tools/FakeLib.dll"
+module BlackFox.AppVeyorEx
 
-namespace BlackFox
+#r "../packages/FAKE/tools/FakeLib.dll"
+#load "./CmdLine.fs"
 
-module AppveyorEx =
-    open Fake
-    open System.IO
+open BlackFox.CommandLine
+open Fake
+open System.IO
 
-    let private sendToAppVeyor args =
-        ExecProcess (fun info ->
-            info.FileName <- "appveyor"
-            info.Arguments <- args) (System.TimeSpan.MaxValue)
-        |> ignore
+let private sendToAppVeyor args =
+    ExecProcess (fun info ->
+        info.FileName <- "appveyor"
+        info.Arguments <- args) (System.TimeSpan.MaxValue)
+    |> ignore
 
-    /// Set environment variable
-    let SetVariable name value =
-        sendToAppVeyor <| sprintf "SetVariable -Name \"%s\" -Value \"%s\"" name value
+type BuildInfo = {
+    Version: string option
+    Message: string option
+    CommitId: string option
+    Committed: System.DateTimeOffset option
+    AuthorName: string option
+    AuthorEmail: string option
+    CommitterName: string option
+    CommitterEmail: string option
+}
 
-    type ArtifactType = Auto | WebDeployPackage
+let defaultBuildInfo = {
+    Version = None
+    Message = None
+    CommitId = None
+    Committed = None
+    AuthorName = None
+    AuthorEmail = None
+    CommitterName = None
+    CommitterEmail = None
+}
 
-    type PushArtifactParams =
-        {
-            /// The full local path to the artifact
-            Path: string
-            /// File name to display in the artifact tab
-            FileName: string
-            /// Deployment name
-            DeploymentName: string
-            /// Type of the artifact
-            Type: ArtifactType
-        }
+let updateBuild (setBuildInfo : BuildInfo -> BuildInfo) =
+    let appendAppVeyor opt (name: string) (transform: _ -> string) cmdLine =
+        match opt with
+        | Some(value) ->
+            cmdLine
+            |> CmdLine.append name
+            |> CmdLine.append (transform value)
+        | None -> cmdLine
+    if buildServer = BuildServer.AppVeyor then
+        let info = setBuildInfo defaultBuildInfo
+        let cmdLine =
+            CmdLine.empty
+            |> CmdLine.append "UpdateBuild"
+            |> appendAppVeyor info.Version "-Version" id
+            |> appendAppVeyor info.Message "-Message" id
+            |> appendAppVeyor info.CommitId "-CommitId" id
+            |> appendAppVeyor info.Committed "-Committed" (fun d -> d.ToString("MMddyyyy-HHmm"))
+            |> appendAppVeyor info.AuthorName "-AuthorName" id
+            |> appendAppVeyor info.AuthorEmail "-AuthorEmail" id
+            |> appendAppVeyor info.CommitterName "-CommitterName" id
+            |> appendAppVeyor info.CommitterEmail "-CommitterEmail" id
+            |> CmdLine.toString
 
-    let defaultPushArtifactParams =
-        {
-            Path = ""
-            FileName = ""
-            DeploymentName = ""
-            Type = Auto
-        }
-
-    let private appendArgIfNotNullOrEmpty value name builder =
-        if (isNotNullOrEmpty value) then
-            appendWithoutQuotes (sprintf "-%s \"%s\"" name value) builder
-        else
-            builder
-
-    /// Push an artifact
-    let PushArtifact (setParams : PushArtifactParams -> PushArtifactParams) =
-        if buildServer = BuildServer.AppVeyor then
-            let parameters = setParams defaultPushArtifactParams
-            new System.Text.StringBuilder()
-            |> append "PushArtifact"
-            |> append parameters.Path
-            |> appendArgIfNotNullOrEmpty parameters.FileName "FileName"
-            |> appendArgIfNotNullOrEmpty parameters.DeploymentName "DeploymentName"
-            |> appendArgIfNotNullOrEmpty (sprintf "%A" parameters.Type) "Type"
-            |> toText
-            |> sendToAppVeyor
-
-    /// Push multiple artifacts
-    let PushArtifacts paths =
-        if buildServer = BuildServer.AppVeyor then
-            for path in paths do
-                PushArtifact (fun p -> { p with Path = path; FileName = Path.GetFileName(path) })
+        sendToAppVeyor cmdLine

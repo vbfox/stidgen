@@ -9,7 +9,6 @@ open Fake.Testing.NUnit3
 open System
 open System.IO
 open BlackFox
-open BlackFox.TaskDefinitionHelper
 
 #if MONO
 #else
@@ -28,7 +27,6 @@ let summary = "Strongly Typed ID type Generator"
 let solutionFile  = rootDir </> project + ".sln"
 let testAssemblies = artifactsDir </> "bin" </> "*.Tests" </> configuration </> "*.Tests.dll"
 let sourceProjects = rootDir </> "src/**/*.??proj"
-
 
 /// The profile where the project is posted
 let gitOwner = "vbfox"
@@ -54,7 +52,18 @@ let getParam name =
         | _ -> Some(str)
 
 // Read additional information from the release notes document
-let release = LoadReleaseNotes "Release Notes.md"
+let release =
+    let fromFile = LoadReleaseNotes (rootDir </> "Release Notes.md")
+    if buildServer = AppVeyor then
+        let appVeyorBuildVersion = int appVeyorBuildVersion
+        let nugetVer = sprintf "%s-appveyor%04i" fromFile.NugetVersion appVeyorBuildVersion
+        let asmVer = System.Version.Parse(fromFile.AssemblyVersion)
+        let asmVer = System.Version(asmVer.Major, asmVer.Minor, asmVer.Build, (int appVeyorBuildVersion))
+        ReleaseNotes.New(asmVer.ToString(), nugetVer, fromFile.Date, fromFile.Notes)
+    else
+        fromFile
+
+AppVeyorEx.updateBuild (fun info -> { info with Version = Some release.AssemblyVersion })
 
 // Helper active pattern for project types
 let (|Fsproj|Csproj|Vbproj|) (projFileName:string) =
@@ -65,7 +74,7 @@ let (|Fsproj|Csproj|Vbproj|) (projFileName:string) =
     | _                           -> failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
 
 // Generate assembly info files with the right version & up-to-date information
-task "AssemblyInfo" ["?Clean"] <| fun _ ->
+Task "AssemblyInfo" ["?Clean"] <| fun _ ->
     let getAssemblyInfoAttributes projectName =
         [ Attribute.Title (projectName)
           Attribute.Product project
@@ -93,7 +102,7 @@ task "AssemblyInfo" ["?Clean"] <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Clean build results
 
-task "Clean" [] <| fun _ ->
+Task "Clean" [] <| fun _ ->
     CleanDir artifactsDir
 
     !! solutionFile
@@ -103,7 +112,7 @@ task "Clean" [] <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Build library & test project
 
-task "Build" ["AssemblyInfo"] <| fun _ ->
+Task "Build" ["AssemblyInfo"] <| fun _ ->
     !! solutionFile
     |> MSBuildRelease "" "Rebuild"
     |> ignore
@@ -111,7 +120,7 @@ task "Build" ["AssemblyInfo"] <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner
 
-task "RunTests" [ "Build"] <| fun _ ->
+Task "RunTests" [ "Build"] <| fun _ ->
     let testResults = artifactsDir</> "TestResults.xml"
     !! testAssemblies
       |> NUnit3 (fun p ->
@@ -130,7 +139,7 @@ task "RunTests" [ "Build"] <| fun _ ->
 #if MONO
 let finalBinaries = "Build"
 #else
-task "SourceLink" [ "Build" ] <| fun _ ->
+Task "SourceLink" [ "Build" ] <| fun _ ->
     let baseUrl = sprintf "%s/%s/{0}/%%var2%%" gitRaw gitName
     tracefn "SourceLink base URL: %s" baseUrl
 
@@ -146,14 +155,14 @@ let finalBinaries = "SourceLink"
 
 #endif
 
-task "FinalBinaries" [ finalBinaries ] DoNothing
+Task "FinalBinaries" [ finalBinaries ] DoNothing
 
 // --------------------------------------------------------------------------------------
 // Build a Zip package
 
 let zipPath = artifactsDir </> (sprintf "%s-%s.zip" project release.NugetVersion)
 
-task "Zip" ["FinalBinaries"] <| fun _ ->
+Task "Zip" ["FinalBinaries"] <| fun _ ->
     let comment = sprintf "%s v%s" project release.NugetVersion
     let files =
         !! (appBinDir </> "*.dll")
@@ -161,7 +170,7 @@ task "Zip" ["FinalBinaries"] <| fun _ ->
         ++ (appBinDir </> "*.exe")
     ZipHelper.CreateZip appBinDir zipPath comment 9 false files
 
-    AppveyorEx.PushArtifact (fun p ->
+    AppVeyor.PushArtifact (fun p ->
         { p with
             Path = zipPath
             FileName = Path.GetFileName(zipPath)
@@ -171,7 +180,7 @@ task "Zip" ["FinalBinaries"] <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Build a NuGet package
 
-task "NuGet" ["FinalBinaries"] <| fun _ ->
+Task "NuGet" ["FinalBinaries"] <| fun _ ->
     Paket.Pack <| fun p ->
         { p with
             OutputPath = artifactsDir
@@ -180,9 +189,9 @@ task "NuGet" ["FinalBinaries"] <| fun _ ->
             WorkingDir = appBinDir }
 
     !! (artifactsDir </> "*.nupkg")
-    |> AppveyorEx.PushArtifacts
+    |> AppVeyor.PushArtifacts
 
-task "PublishNuget" ["NuGet"] <| fun _ ->
+Task "PublishNuget" ["NuGet"] <| fun _ ->
     let key =
         match getParam "nuget-key" with
         | Some(key) -> key
@@ -195,7 +204,7 @@ task "PublishNuget" ["NuGet"] <| fun _ ->
 
 #load "../paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 
-task "GitRelease" [] <| fun _ ->
+Task "GitRelease" [] <| fun _ ->
     let remote =
         Git.CommandHelper.getGitResult "" "remote -v"
         |> Seq.filter (fun (s: string) -> s.EndsWith("(push)"))
@@ -209,7 +218,7 @@ task "GitRelease" [] <| fun _ ->
     Git.Branches.tag "" release.NugetVersion
     Git.Branches.pushTag "" remote release.NugetVersion
 
-task "GitHubRelease" ["Zip"] <| fun _ ->
+Task "GitHubRelease" ["Zip"] <| fun _ ->
     let user =
         match getBuildParam "github-user" with
         | s when not (String.IsNullOrWhiteSpace s) -> s
@@ -226,7 +235,7 @@ task "GitHubRelease" ["Zip"] <| fun _ ->
     |> Octokit.releaseDraft
     |> Async.RunSynchronously
 
-task "Pack" [] <| fun _ ->
+Task "Pack" [] <| fun _ ->
     Fake.ILMergeHelper.ILMerge
         (fun p ->
             { p with
@@ -239,11 +248,11 @@ task "Pack" [] <| fun _ ->
 // --------------------------------------------------------------------------------------
 // Empty targets for readability
 
-task "Default" ["RunTests"] DoNothing
-task "Release" ["GitHubRelease"; "PublishNuget"] DoNothing
-task "CI" ["Clean"; "RunTests"; "Zip"; "NuGet"] DoNothing
+Task "Default" ["RunTests"] DoNothing
+Task "Release" ["GitHubRelease"; "PublishNuget"] DoNothing
+Task "CI" ["Clean"; "RunTests"; "Zip"; "NuGet"] DoNothing
 
 // --------------------------------------------------------------------------------------
 // Go! Go! Go!
 
-runTaskOrDefault "Default"
+RunTaskOrDefault "Default"

@@ -1,5 +1,6 @@
 #!/bin/bash
 
-./paket.sh restore
+function dotnet { if test "$OS" = "Windows_NT"; then $@; else mono $@; fi }
 
-mono packages/FAKE/tools/FAKE.exe "$@" --fsiargs -d:MONO "build/build.fsx"
+./paket.sh restore || { exit $?; }
+dotnet packages/FAKE/tools/FAKE.exe $@ --fsiargs build/build.fsx
