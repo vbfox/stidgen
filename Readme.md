@@ -2,7 +2,8 @@ Strongly Typed ID type Generator
 ================================
 
 [![Join the chat at https://gitter.im/vbfox/stidgen](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/vbfox/stidgen?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Build status](https://ci.appveyor.com/api/projects/status/6ehdd4cam628ve57/branch/master?svg=true)](https://ci.appveyor.com/project/vbfox/stidgen/branch/master)
+[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/6ehdd4cam628ve57/branch/master?svg=true)](https://ci.appveyor.com/project/vbfox/stidgen/branch/master)
+[![Travis-CI Build status](https://travis-ci.org/vbfox/stidgen.svg)](https://travis-ci.org/vbfox/stidgen)
 [![MIT License][LicenseBadge]](LICENSE.md)
 [![Nuget Package](https://img.shields.io/nuget/v/stidgen.svg)](https://www.nuget.org/packages/stidgen)
 
@@ -18,7 +19,7 @@ And generate for each type specified a type that can be used as a strongly-typed
 * It's an immutable value type with a single member.
 * The `struct` is partial to allow addition of methods and properties.
 * `null` values are disallowed by default and an extensibility point is available to add more application-dependent checks.
-* Casts from and to the underlying type are available. (explicit by default)  
+* Casts from and to the underlying type are available. (explicit by default)
 * Equality member and operators are lifted, by default the ID types are only equals between themselves but equality with the underlying type is optionally available.
 * `IEquatable<T>` is implemented.
 * `IConvertible` is implemented if the underlying type implement it.
@@ -46,7 +47,7 @@ Usage
 
 Then to generate all files specified by a stidgen definition file :
 
-    ./packages/stidgen/tools/stidgen.exe myfile.stidgen 
+    ./packages/stidgen/tools/stidgen.exe myfile.stidgen
 
 Definition file format
 ----------------------
@@ -68,5 +69,5 @@ Each definition file can contain a number of types of the form :
 * **FileName** (string): Full name of the file to generate for this type. Default to "TypeName.Generated.cs".
 * **ProtobufnetSerializable** (bool): Enable the generation of `[ProtoContract]` and `[ProtoMember]` attributes for [protobuf-net](https://github.com/mgravell/protobuf-net) support. Default to false.
 
- 
+
 [LicenseBadge]: https://img.shields.io/badge/license-MIT%20License-blue.svg
