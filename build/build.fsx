@@ -1,7 +1,7 @@
 ﻿#r @"../packages/FAKE/tools/FakeLib.dll"
-#load "TaskDefinitionHelper.fsx"
-#load "MyConsoleTracelistener.fsx"
-#load "AppveyorEx.fsx"
+#load "./TaskDefinitionHelper.fsx"
+#load "./MyConsoleTraceListener.fsx"
+#load "./AppveyorEx.fsx"
 
 open Fake
 open Fake.AssemblyInfoFile
