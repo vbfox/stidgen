@@ -1,5 +1,6 @@
 ﻿#r @"../packages/FAKE/tools/FakeLib.dll"
 #load "TaskDefinitionHelper.fsx"
+#load "MyConsoleTracelistener.fsx"
 #load "AppveyorEx.fsx"
 
 open Fake
