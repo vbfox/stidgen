@@ -11,14 +11,17 @@ open Fake
 ///  - `colorMap` - A function which maps TracePriorities to ConsoleColors.
 type MyConsoleTraceListener(importantMessagesToStdErr, colorMap) =
     let mutable useColor = true
+    let protectColor f =
+        try
+            if useColor then f()
+        with
+        | :? System.ArgumentNullException ->
+            useColor <- false
+
     let writeText toStdErr color newLine text =
         let curColor = Console.ForegroundColor
         try
-            try
-            if useColor && curColor <> color then Console.ForegroundColor <- color
-            with
-            | :? ArgumentNullException when EnvironmentHelper.isMono ->
-                useColor <- false
+            protectColor (fun () -> if curColor <> color then Console.ForegroundColor <- color)
             let printer =
                 match toStdErr, newLine with
                 | true, true -> eprintfn
@@ -27,7 +30,7 @@ type MyConsoleTraceListener(importantMessagesToStdErr, colorMap) =
                 | false, false -> printf
             printer "%s" text
         finally
-          if useColor && curColor <> color then Console.ForegroundColor <- curColor
+          protectColor (fun () -> if curColor <> color then Console.ForegroundColor <- curColor)
 
     interface ITraceListener with
         /// Writes the given message to the Console.
