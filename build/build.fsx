@@ -39,15 +39,6 @@ let gitRaw = environVarOrDefault "gitRaw" ("https://raw.github.com/" + gitOwner)
 // Build steps
 // --------------------------------------------------------------------------------------
 
-// Parameter helpers to be able to get parameters from either command line or environment
-let getParamOrDefault name value = environVarOrDefault name <| getBuildParamOrDefault name value
-
-let getParam name =
-    let str = getParamOrDefault name ""
-    match str with
-        | "" -> None
-        | _ -> Some(str)
-
 // Read additional information from the release notes document
 let release =
     let fromFile = LoadReleaseNotes (rootDir </> "Release Notes.md")
@@ -55,7 +46,7 @@ let release =
         let appVeyorBuildVersion = int appVeyorBuildVersion
         let nugetVer = sprintf "%s-appveyor%04i" fromFile.NugetVersion appVeyorBuildVersion
         let asmVer = System.Version.Parse(fromFile.AssemblyVersion)
-        let asmVer = System.Version(asmVer.Major, asmVer.Minor, asmVer.Build, (int appVeyorBuildVersion))
+        let asmVer = System.Version(asmVer.Major, asmVer.Minor, asmVer.Build, appVeyorBuildVersion)
         ReleaseNotes.New(asmVer.ToString(), nugetVer, fromFile.Date, fromFile.Notes)
     else
         fromFile
@@ -187,7 +178,7 @@ Task "NuGet" ["FinalBinaries"] <| fun _ ->
 
 Task "PublishNuget" ["NuGet"] <| fun _ ->
     let key =
-        match getParam "nuget-key" with
+        match environVarOrNone "nuget-key" with
         | Some(key) -> key
         | None -> getUserPassword "NuGet key: "
 
