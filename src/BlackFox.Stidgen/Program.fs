@@ -1,6 +1,7 @@
 ﻿module BlackFox.Stidgen.Program
 
 open BlackFox
+open BlackFox.ColoredPrintf
 open BlackFox.Stidgen.Control
 
 type RunResults = FileGeneration.GenerationResult list
@@ -18,34 +19,34 @@ let run fileGlobs =
     ]
 
 let private printUsage () =
-    sprintf "^[yellow]Usage^[reset]:" |> coloredWriteLine
-    sprintf "    ^[white]stidgen^[reset] fileGlob ^[darkgray][^[reset]fileGlob ...^[darkgray]]^[reset]" |> coloredWriteLine
+    colorprintfn "$yellow[Usage]:"
+    colorprintfn "    $white[stidgen] fileGlob $darkgray[[]fileGlob ...$darkgray[\]]"
 
 let private printSuccessResult (result:FileGeneration.GenerationResult) =
     for file in result.Files do
-        sprintf "Generated in ^[yellow]%s^[reset]:" file.FileName |> coloredWriteLine
+        colorprintfn "Generated in $yellow[%s]:" file.FileName
         for generated in file.IdTypes do
-            sprintf "  ^[darkgray]*^[white] %s" generated.Name |> coloredWriteLine
+            colorprintfn "  $darkgray[*] $white[%s]" generated.Name
     printfn ""
 
 let private printErrorResult (result:FileGeneration.GenerationResult) = 
-    sprintf "^[red]Errors in ^[yellow]%s^[red]:" result.Configuration.Path.Value |> coloredWriteLine
+    colorprintfn "$red[Errors in $yellow[%s]:" result.Configuration.Path.Value
 
     match result.Configuration.Result with
     | Success _ -> failwith "Unexpected success"
     | Failure (ConfigurationParser.InvalidUnderlyingTypes(types)) ->
-        sprintf "^[red]\tUnable to resolve the following underlying types:" |> coloredWriteLine
+        colorprintfn "$red[\tUnable to resolve the following underlying types:"
         for t in types do
             let underlying = System.String.Join(".", t.UnderlyingType)
             let targetType = System.String.Join(".", t.FullName)
-            sprintf "^[darkred]\t * ^[red]%s (In %s)" underlying targetType |> coloredWriteLine
+            colorprintfn "\t $darkred[*] $red[%s (In %s)]" underlying targetType
     | Failure (ConfigurationParser.ParseError(msg, _)) ->
-        sprintf "^[red]\t%s" (msg.Replace("\r\n", "\r\n\t")) |> coloredWriteLine
+        colorprintfn "$red[\t%s" (msg.Replace("\r\n", "\r\n\t"))
 
 let private printResult (results: (string*RunResults) list) =
     for glob, results in results do
         if results.IsEmpty then
-            sprintf "^[red]No files found for '^[yellow]%s^[red]'" glob |> coloredWriteLine
+            colorprintfn "$red[No files found for '$yellow[%s]'" glob
             printfn ""
         else
             for result in results do

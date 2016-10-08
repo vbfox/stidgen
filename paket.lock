@@ -1,6 +1,11 @@
 REDIRECTS: ON
 NUGET
   remote: https://www.nuget.org/api/v2
+    BlackFox.ColoredPrintf (0.1)
+      BlackFox.MasterOfFoo (>= 0.1.2 < 0.2)
+      FSharp.Core (>= 4.0 < 5.0)
+    BlackFox.MasterOfFoo (0.1.2)
+      FSharp.Core (>= 4.0 < 5.0)
     FAKE (4.39.1)
     FParsec (1.0.2)
     FSharp.Core (4.0.0.1)
@@ -154,5 +159,5 @@ NUGET
       System.Runtime (>= 4.0) - framework: dnxcore50
 GITHUB
   remote: fsharp/FAKE
-    modules/Octokit/Octokit.fsx (73589a85a5e30a2c78d61efccdd3446a99483142)
+    modules/Octokit/Octokit.fsx (022d94ffc2fc28a863a9f8bd5aac71f0a74ab86c)
       Octokit (>= 0.20)

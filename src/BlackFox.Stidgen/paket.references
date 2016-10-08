@@ -1,3 +1,4 @@
 FSharp.Core
 Microsoft.CodeAnalysis.CSharp.Workspaces
 FParsec
+BlackFox.ColoredPrintf
