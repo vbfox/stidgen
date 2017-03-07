@@ -17,6 +17,33 @@ let ``GetHashCode is lifted`` () =
     "
 
 [<Test>]
+let ``IComparable is lifted`` () =
+    let idType = makeIdFromType<int> id
+
+    runGeneratedTest idType @"
+    Check.That(((IComparable<int>)new Id(42)).CompareTo(42).IsEqualTo(0);
+    Check.That(((IComparable<int>)new Id(42)).CompareTo(0).IsFalse();
+    "
+
+[<Test>]
+let ``IEquatable handle null`` () =
+    let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true })
+
+    runGeneratedTest idType @"
+    Check.That(((IEquatable<string>)new Id(null)).Equals(null).IsTrue();
+    Check.That(((IEquatable<string>)new Id(null)).Equals(""Foo"").IsFalse();
+    "
+
+[<Test>]
+let ``Self IEquatable exists`` () =
+    let idType = makeIdFromType<string> id
+
+    runGeneratedTest idType @"
+    Check.That(((IEquatable<Id>)new Id(""Test"")).Equals(new Id(""Test"")).IsTrue();
+    Check.That(((IEquatable<Id>)new Id(""Test"")).Equals(new Id(""Foo"")).IsFalse();
+    "
+
+[<Test>]
 let ``GetHashCode works with null`` () =
     let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true })
 

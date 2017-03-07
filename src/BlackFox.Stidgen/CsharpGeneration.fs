@@ -33,6 +33,8 @@ let private value info x = x :> ExpressionSyntax |> info.ValueAccess
 
 let private (|?>) x (c, f) = if c then f x else x
 
+let private typeCanBeNull (t: Type) = t.IsClass || t.IsInterface
+
 let private visibilityToKeyword = function
     | Public -> SyntaxKind.PublicKeyword
     | Internal -> SyntaxKind.InternalKeyword
@@ -433,18 +435,24 @@ module private InterfaceLift =
             Explicit: bool
         } 
     
-    type interfaceLift<'a> =
+    type interfaceLift =
         {
+            LiftedType : Type
             GetNullCheck : getNullCheckType
             Info : ParsedInfo
             Params : InterfaceLiftParams
         }
 
-    let makeLift<'i> getNullCheck params' info : interfaceLift<'i> =
-        { GetNullCheck=getNullCheck; Params=params'; Info=info }
+    let makeLift<'i> getNullCheck params' info =
+        {
+            LiftedType = typeof<'i>
+            GetNullCheck = getNullCheck
+            Params = params'
+            Info = info
+        }
 
-    let inline name (_ : interfaceLift<'a>) = namesyntaxof<'a>
-    let inline type' (_ : interfaceLift<'a>) = typeof<'a>
+    let inline type' (lift : interfaceLift) = lift.LiftedType
+    let inline name (lift : interfaceLift) = NameSyntax.FromType(type' lift)
 
     let private makeMember (m : MethodInfo) lift =
         // Initial declaration
@@ -462,7 +470,6 @@ module private InterfaceLift =
 
         // Body
         let parametersForCall = parameters |> Array.map (fun (name, _) -> identifier name :> ExpressionSyntax)
-        let bodyCheck = lift.GetNullCheck m lift.Info
         let bodyRet = 
             ret
                 (invocation
@@ -523,6 +530,76 @@ module private Convertible =
     let addIConvertibleMembers info =
         let lift = makeLift<IConvertible> makeNullCheck { Explicit=true } info
         addLiftedMethods lift
+
+module private Comparable =
+    open System.Globalization
+    open InterfaceLift
+    open System.Reflection
+
+    let private makeNullCheck (m: MethodInfo) (info:ParsedInfo) =
+        let equatableType = m.DeclaringType.GenericTypeArguments.[0]
+        if typeCanBeNull equatableType then
+            if'
+                (equals info.ThisValueMemberAccess Literal.Null)
+                (ifelse
+                    (equals (identifier "other") Literal.Null)
+                    (ret Literal.Zero)
+                    (ret (Literal.Int -1))
+                )
+            :> StatementSyntax
+        else
+            if'
+                (equals info.ThisValueMemberAccess Literal.Null)
+                (ret Literal.False)
+            :> StatementSyntax
+
+    let private iComparable = typedefof<IComparable<_>>
+    let private iComparableNamespace = NameSyntax.MakeQualified(iComparable.Namespace.Split('.'))
+    let private iComparableOf t =
+        SyntaxFactory.QualifiedName(iComparableNamespace, NameSyntax.MakeGeneric iComparable.Name [|t|])
+
+    /// Implement all IComparable<Foo> of the underlying on the Id type
+    let private addLiftedComparable (info: ParsedInfo) decl =
+        info.Id.UnderlyingType.GetInterfaces()
+        |> Array.filter(fun interf -> interf.IsGenericType && interf.GetGenericTypeDefinition() = iComparable)
+        |> Array.fold(fun currentDecl interf ->
+            let lift = {
+                LiftedType = interf
+                GetNullCheck = makeNullCheck
+                Params = { Explicit = false }
+                Info = info }
+
+            currentDecl |> addLiftedMethods lift
+        ) decl
+
+    let private isSelfComparable info =
+        let selfEquatableType = iComparable.MakeGenericType(info.Id.UnderlyingType)
+        info.Id.UnderlyingType.GetInterfaces() |> Array.exists (fun interf -> interf = selfEquatableType)
+
+    /// Implement IComparable<Id>
+    let private addSelfComparable (info: ParsedInfo) decl =
+        let comparableUnderlying = iComparable.MakeGenericType(info.Id.UnderlyingType)
+        let bodyRet = 
+            ret
+                (invocation
+                    (info.ThisValueMemberAccess |> cast (NameSyntax.FromType comparableUnderlying) |> memberAccess "CompareTo")
+                    [ identifier "other" |> memberAccess info.FieldName])
+
+        let compareToMethod =
+            SyntaxFactory.MethodDeclaration(namesyntaxof<int>, "CompareTo")
+            |> addModifiers [SyntaxKind.PublicKeyword]
+            |> addParameter "other" info.GeneratedTypeSyntax
+            |> addBodyStatement bodyRet
+
+        decl
+            |> addMember compareToMethod
+            |> addBaseTypes [ iComparableOf info.GeneratedTypeSyntax ]
+    
+
+    let addComparable info decl =
+        decl
+        |> addLiftedComparable info
+        |?> (isSelfComparable info, addSelfComparable info)
 
 module private Formattable =
     open System.Globalization
@@ -710,7 +787,8 @@ let private makeClass info =
         |> addMember' makeCtor
         |> addMember' makeCheckValuePartial
         |> addMember' makeToString
-        |> Equality.addEqualityMembers info 
+        |> Equality.addEqualityMembers info
+        |> Comparable.addComparable info
         |> Casts.addAll info
         |> ParseMethods.addParseMethods info
         |> Convertible.addIConvertibleMembers info
@@ -725,7 +803,7 @@ let private makeInfo idType =
 
     {
         Id = idType
-        CanBeNull = idType.UnderlyingType.IsClass || idType.UnderlyingType.IsInterface
+        CanBeNull = typeCanBeNull idType.UnderlyingType
         AllowNull = idType.AllowNull
         NamespaceProvided = namespaceProvided
         UnderlyingTypeSyntax = NameSyntax.FromType(idType.UnderlyingType)
