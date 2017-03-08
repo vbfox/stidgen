@@ -29,7 +29,7 @@
     <Prefer32Bit>true</Prefer32Bit>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
-    <StartArguments>"C:\Users\vbfox\Documents\Visual Studio 14\Projects\ConsoleApplication8\ConsoleApplication8\TestIds.stidgen"</StartArguments>
+    <StartArguments>"G:\Code\sample.stidgen"</StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>

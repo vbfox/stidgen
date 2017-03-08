@@ -17,33 +17,6 @@ let ``GetHashCode is lifted`` () =
     "
 
 [<Test>]
-let ``IComparable is lifted`` () =
-    let idType = makeIdFromType<int> id
-
-    runGeneratedTest idType @"
-    Check.That(((IComparable<int>)new Id(42)).CompareTo(42).IsEqualTo(0);
-    Check.That(((IComparable<int>)new Id(42)).CompareTo(0).IsFalse();
-    "
-
-[<Test>]
-let ``IEquatable handle null`` () =
-    let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true })
-
-    runGeneratedTest idType @"
-    Check.That(((IEquatable<string>)new Id(null)).Equals(null).IsTrue();
-    Check.That(((IEquatable<string>)new Id(null)).Equals(""Foo"").IsFalse();
-    "
-
-[<Test>]
-let ``Self IEquatable exists`` () =
-    let idType = makeIdFromType<string> id
-
-    runGeneratedTest idType @"
-    Check.That(((IEquatable<Id>)new Id(""Test"")).Equals(new Id(""Test"")).IsTrue();
-    Check.That(((IEquatable<Id>)new Id(""Test"")).Equals(new Id(""Foo"")).IsFalse();
-    "
-
-[<Test>]
 let ``GetHashCode works with null`` () =
     let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true })
 
@@ -51,6 +24,53 @@ let ``GetHashCode works with null`` () =
     var instance = new Id(null);
     Check.ThatCode(() => instance.GetHashCode()).DoesNotThrow();
     "
+
+[<Test>]
+let ``IComparable is implemented`` () =
+    let idType = makeIdFromType<int> id
+
+    runGeneratedTest idType @"
+    IComparable<Id> fortyTwo = new Id(42);
+    Check.That(fortyTwo.CompareTo(new Id(0))).IsEqualTo(1);
+    Check.That(fortyTwo.CompareTo(new Id(42))).IsEqualTo(0);
+    Check.That(fortyTwo.CompareTo(new Id(100))).IsEqualTo(-1);
+    "
+
+[<Test>]
+let ``IComparable handle null`` () =
+    let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true })
+
+    runGeneratedTest idType @"
+    IComparable<Id> fortyTwo = new Id(""42"");
+    IComparable<Id> nullId = new Id(null);
+    Check.That(nullId.CompareTo(new Id(null))).IsEqualTo(0);
+    Check.That(nullId.CompareTo(new Id(""42""))).IsEqualTo(-1);
+    Check.That(fortyTwo.CompareTo(new Id(null))).IsEqualTo(1);
+    "
+
+[<Test>]
+let ``IComparable<'t> compare to underlying when enabled`` () =
+    let idType = makeIdFromType<int> (fun i -> { i with EqualsUnderlying = true })
+
+    runGeneratedTest idType @"
+    IComparable<int> instance = new Id(42);
+    Check.That(instance.CompareTo(0)).IsEqualTo(1);
+    Check.That(instance.CompareTo(42)).IsEqualTo(0);
+    Check.That(instance.CompareTo(100)).IsEqualTo(-1);
+    "
+
+[<Test>]
+let ``IComparable<Underlying> handle null`` () =
+    let idType = makeIdFromType<string> (fun i -> { i with AllowNull = true; EqualsUnderlying = true })
+
+    runGeneratedTest idType @"
+    IComparable<string> fortyTwo = new Id(""42"");
+    IComparable<string> nullId = new Id(null);
+    Check.That(nullId.CompareTo(null)).IsEqualTo(0);
+    Check.That(nullId.CompareTo(""42"")).IsEqualTo(-1);
+    Check.That(fortyTwo.CompareTo(null)).IsEqualTo(1);
+    "
+
 [<Test>]
 let ``IEquatable<'t>.Equals underlying when enabled`` () =
     let idType = makeIdFromType<string> (fun i -> { i with EqualsUnderlying = true })

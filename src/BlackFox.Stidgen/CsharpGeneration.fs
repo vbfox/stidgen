@@ -544,13 +544,13 @@ module private Comparable =
                 (ifelse
                     (equals (identifier "other") Literal.Null)
                     (ret Literal.Zero)
-                    (ret (Literal.Int -1))
+                    (ret (Literal.Int -1)) // invert of x.CompareTo(null)=1
                 )
             :> StatementSyntax
         else
             if'
                 (equals info.ThisValueMemberAccess Literal.Null)
-                (ret Literal.False)
+                (ret (Literal.Int -1))
             :> StatementSyntax
 
     let private iComparable = typedefof<IComparable<_>>
@@ -558,7 +558,7 @@ module private Comparable =
     let private iComparableOf t =
         SyntaxFactory.QualifiedName(iComparableNamespace, NameSyntax.MakeGeneric iComparable.Name [|t|])
 
-    /// Implement all IComparable<Foo> of the underlying on the Id type
+    /// Implement all IComparable<'t> of the underlying on the Id type
     let private addLiftedComparable (info: ParsedInfo) decl =
         info.Id.UnderlyingType.GetInterfaces()
         |> Array.filter(fun interf -> interf.IsGenericType && interf.GetGenericTypeDefinition() = iComparable)
@@ -579,26 +579,36 @@ module private Comparable =
     /// Implement IComparable<Id>
     let private addSelfComparable (info: ParsedInfo) decl =
         let comparableUnderlying = iComparable.MakeGenericType(info.Id.UnderlyingType)
+        let otherField = identifier "other" |> memberAccess info.FieldName
+        let nullCheck =
+            if'
+                (equals info.ThisValueMemberAccess Literal.Null)
+                (ifelse
+                    (equals otherField Literal.Null)
+                    (ret Literal.Zero)
+                    (ret (Literal.Int -1))
+                )
+            :> StatementSyntax
         let bodyRet = 
             ret
                 (invocation
                     (info.ThisValueMemberAccess |> cast (NameSyntax.FromType comparableUnderlying) |> memberAccess "CompareTo")
-                    [ identifier "other" |> memberAccess info.FieldName])
+                    [ otherField ])
 
         let compareToMethod =
             SyntaxFactory.MethodDeclaration(namesyntaxof<int>, "CompareTo")
             |> addModifiers [SyntaxKind.PublicKeyword]
             |> addParameter "other" info.GeneratedTypeSyntax
+            |?> (info.CanBeNull, addBodyStatement nullCheck)
             |> addBodyStatement bodyRet
 
         decl
             |> addMember compareToMethod
             |> addBaseTypes [ iComparableOf info.GeneratedTypeSyntax ]
-    
 
     let addComparable info decl =
         decl
-        |> addLiftedComparable info
+        |?> (info.Id.EqualsUnderlying, addLiftedComparable info)
         |?> (isSelfComparable info, addSelfComparable info)
 
 module private Formattable =
