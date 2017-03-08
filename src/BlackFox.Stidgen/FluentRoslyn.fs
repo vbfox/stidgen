@@ -1,5 +1,6 @@
 ﻿module BlackFox.Stidgen.FluentRoslyn
 
+open System.Linq
 open Microsoft.CodeAnalysis
 open Microsoft.CodeAnalysis.CSharp
 open Microsoft.CodeAnalysis.CSharp.Syntax
@@ -373,6 +374,7 @@ let throwIfArgumentNull argName =
 
 module FromReflection =
     open System.Reflection
+    open System
     
     /// Create an ExpressionSyntax representing an access to a static method
     let staticMethodAccess (m:MethodInfo) =
@@ -410,3 +412,13 @@ module FromReflection =
 
     let getParametersForDeclaration (m:MethodInfo) = 
         m.GetParameters() |> Seq.map(parameterInfoToParameter)
+
+let parseDocumentationComment (comment: string) =
+    let text = comment + "\r\nvoid Stidgen() {}";
+    let parsed =
+        SyntaxFactory.ParseCompilationUnit(
+            text,
+            0,
+            CSharpParseOptions(LanguageVersion.CSharp4, DocumentationMode.Parse, SourceCodeKind.Script))
+        
+    parsed.DescendantNodes(null, true).OfType<DocumentationCommentTriviaSyntax>().Single() |> SyntaxFactory.Trivia

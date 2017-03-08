@@ -168,6 +168,18 @@ let private makeToString info =
 module private Equality =
     open System.Reflection
 
+    let getHashCodeDoc = parseDocumentationComment @"/// <summary>Serves as the default hash function.</summary>
+/// <returns>A hash code for the current object.</returns>"
+
+    let objectEqualsDoc = parseDocumentationComment @"/// <summary>
+/// Determines whether the specified object is equal to the current object.
+/// <param name=""obj"">The object to compare with the current object.</param>
+/// </summary>
+/// <returns>
+/// true if the specified object is equal to the current object;
+/// otherwise, false.
+/// </returns>"
+
     let private makeGetHashCode info =
         let returnGetHashCode = ret (getHashCode info.ThisValueMemberAccess)
 
@@ -179,6 +191,7 @@ module private Equality =
         |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
         |?> (info.CanBeNull, addBodyStatement returnIfNull)
         |> addBodyStatement returnGetHashCode
+        |> addTriviaBefore [getHashCodeDoc]
 
     /// All of the following types have '!=' and '==' implemented with another instance of the same type
     /// but there is no op_Equality or op_Inequality method present as they exists directly at the IL level.
@@ -265,6 +278,7 @@ module private Equality =
         |> addBodyStatement returnFalseForIncorrectType
         |?> (info.Id.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
         |> addBodyStatement returnArgCastToIdValueEqualsValue
+        |> addTriviaBefore [objectEqualsDoc]
 
     let private makeEqualsGenerated info =
         let parameterName = "other"
@@ -536,6 +550,22 @@ module private Comparable =
     open InterfaceLift
     open System.Reflection
 
+    let docComment = parseDocumentationComment @"/// <summary>
+/// Compares the current instance with another object of the same type and
+/// returns an integer that indicates whether the current instance precedes,
+/// follows, or occurs in the same position in the sort order as the other
+/// object.
+/// </summary>
+/// <param name=""other"">An object to compare with this instance.</param>
+/// <returns>
+/// A value that indicates the relative order of the objects being compared.
+/// The return value has these meanings: Value Meaning Less than zero This
+/// instance precedes <paramref name=""other"" /> in the sort order.  Zero This
+/// instance occurs in the same position in the sort order as
+/// <paramref name=""other"" />. Greater than zero This instance follows
+/// <paramref name=""other"" /> in the sort order.
+/// </returns>"
+
     let private makeNullCheck (m: MethodInfo) (info:ParsedInfo) =
         let equatableType = m.DeclaringType.GenericTypeArguments.[0]
         if typeCanBeNull equatableType then
@@ -601,6 +631,7 @@ module private Comparable =
             |> addParameter "other" info.GeneratedTypeSyntax
             |?> (info.CanBeNull, addBodyStatement nullCheck)
             |> addBodyStatement bodyRet
+            |> addTriviaBefore [docComment]
 
         decl
             |> addMember compareToMethod
@@ -757,11 +788,15 @@ module GeneratedCodeAttribute =
     // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
     let private nameSyntax = identifier "GeneratedCode"
 
-    let inline private addToMember typeMember =
-        let toolName = Literal.String "BlackFox.Stidgen"
-        let toolVersion = Literal.String AssemblyVersionInformation.Version
-        let attribute = makeAttribute nameSyntax [toolName; toolVersion]
-        typeMember |> addAttribute attribute
+    let private toolName = Literal.String "BlackFox.Stidgen"
+    let private toolVersion = Literal.String AssemblyVersionInformation.Version
+    let private attribute = makeAttribute nameSyntax [toolName; toolVersion]
+
+    let inline private addToMember (typeMember: #SyntaxNode) =
+        let leadingTrivia = typeMember.GetLeadingTrivia()
+        typeMember.WithoutLeadingTrivia()
+        |> addAttribute attribute
+        |> addTriviaBefore leadingTrivia
 
     let private isPartial (method' : MethodDeclarationSyntax) =
         method'.Modifiers.Any(SyntaxKind.PartialKeyword)
