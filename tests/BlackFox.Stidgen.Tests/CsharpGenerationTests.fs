@@ -1,178 +1,185 @@
 ﻿module BlackFox.Stidgen.CsharpGenerationTests
 
 open BlackFox.Stidgen.CsharpCodeTesting
-open BlackFox.Stidgen.CsharpGeneration
 open BlackFox.Stidgen.Description
-open NFluent
-open NUnit.Framework
 open System
+open Expecto
 
-[<Test>]
-let ``Compile for Int32`` () = runGeneratedTest (makeIdFromType<int> id) ""
+let tests = [
+    test "Compile for Int32" {
+        runGeneratedTest (makeIdFromType<int> id) ""
+    }
 
-[<Test>]
-let ``Compile for Nullable Int32`` () = runGeneratedTest (makeIdFromType<Nullable<int>> id) ""
+    test "Compile for Nullable Int32" {
+        runGeneratedTest (makeIdFromType<Nullable<int>> id) ""
+    }
 
-[<Test>]
-let ``Compile for Int64`` () = runGeneratedTest (makeIdFromType<int64> id) ""
+    test "Compile for Int64" {
+        runGeneratedTest (makeIdFromType<int64> id) ""
+    }
 
-[<Test>]
-let ``Compile for String`` () = runGeneratedTest (makeIdFromType<string> id) ""
+    test "Compile for String" {
+        runGeneratedTest (makeIdFromType<string> id) ""
+    }
 
-[<Test>]
-let ``Compile for Guid`` () = runGeneratedTest (makeIdFromType<Guid> id) ""
+    test "Compile for Guid" {
+        runGeneratedTest (makeIdFromType<Guid> id) ""
+    }
 
-[<Test>]
-let ``Compile for Exception`` () = runGeneratedTest (makeIdFromType<Exception> id) ""
+    test "Compile for Exception" {
+        runGeneratedTest (makeIdFromType<Exception> id) ""
+    }
 
-[<Test>]
-let ``Default property name`` () =
-    let idType = makeIdFromType<string> id
+    test "Default property name" {
+        let idType = makeIdFromType<string> id
 
-    runGeneratedTest idType @"
-    var instance = new Id(""test"");
-    Check.That(instance.Value).IsEqualTo(""test"");
-    "
+        runGeneratedTest idType @"
+        var instance = new Id(""test"");
+        Check.That(instance.Value).IsEqualTo(""test"");
+        "
+    }
 
-[<Test>]
-let ``Custom property name`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with ValueProperty = "SomeName" }
-        )
+    test "Custom property name" {
+        let idType = makeIdFromType<string> (fun i ->
+                { i with ValueProperty = "SomeName" }
+            )
 
-    runGeneratedTest idType @"
-    var instance = new Id(""test"");
-    Check.That(instance.SomeName).IsEqualTo(""test"");
-    "
+        runGeneratedTest idType @"
+        var instance = new Id(""test"");
+        Check.That(instance.SomeName).IsEqualTo(""test"");
+        "
+    }
 
-[<Test>]
-let ``Custom type name`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with Name = "SomeName" }
-        )
+    test "Custom type name" {
+        let idType = makeIdFromType<string> (fun i ->
+                { i with Name = "SomeName" }
+            )
 
-    runGeneratedTest idType @"
-    var instance = new SomeName(""test"");
-    Check.That(instance.Value).IsEqualTo(""test"");
-    "
+        runGeneratedTest idType @"
+        var instance = new SomeName(""test"");
+        Check.That(instance.Value).IsEqualTo(""test"");
+        "
+    }
 
-[<Test>]
-let ``Custom simple namespace`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with Namespace = "SomeNs" }
-        )
+    test "Custom simple namespace" {
+        let idType = makeIdFromType<string> (fun i ->
+                { i with Namespace = "SomeNs" }
+            )
 
-    runGeneratedTest idType @"
-    var instance = new SomeNs.Id(""test"");
-    Check.That(instance.Value).IsEqualTo(""test"");
-    "
+        runGeneratedTest idType @"
+        var instance = new SomeNs.Id(""test"");
+        Check.That(instance.Value).IsEqualTo(""test"");
+        "
+    }
 
-[<Test>]
-let ``Custom complex namespace`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with Namespace = "Some.Ns.For.Tests" }
-        )
+    test "Custom complex namespace" {
+        let idType = makeIdFromType<string> (fun i ->
+                { i with Namespace = "Some.Ns.For.Tests" }
+            )
 
-    runGeneratedTest idType @"
-    var instance = new Some.Ns.For.Tests.Id(""test"");
-    Check.That(instance.Value).IsEqualTo(""test"");
-    "
+        runGeneratedTest idType @"
+        var instance = new Some.Ns.For.Tests.Id(""test"");
+        Check.That(instance.Value).IsEqualTo(""test"");
+        "
+    }
 
-[<Test>]
-let ``Null string throw`` () =
-    let idType = makeIdFromType<string> id
+    test "Null string throw" {
+        let idType = makeIdFromType<string> id
 
-    Check.ThatCode(fun () -> runGeneratedTest idType @"new Id(null);")
-        .Throws<ArgumentNullException>() |> ignore
+        Expect.throwsT<ArgumentNullException> (fun () -> runGeneratedTest idType @"new Id(null);") "throw with null arg"
+    }
 
-[<Test>]
-let ``Null string can be allowed`` () =
-    let idType = makeIdFromType<string> (fun i ->
-            { i with AllowNull = true }
-        )
+    test "Null string can be allowed" {
+        let idType = makeIdFromType<string> (fun i ->
+                { i with AllowNull = true }
+            )
 
-    let test () =
         runGeneratedTest idType @"
         var instance = new Id(null);
         Check.That(instance.Value).IsEqualTo(null);
         "
+    }
 
-    Check.ThatCode(test).DoesNotThrow() |> ignore
+    test "Value is interned" {
+        let idType = makeIdFromType<string> id
 
-[<Test>]
-let ``Value is interned`` () =
-    let idType = makeIdFromType<string> id
+        runGeneratedTest idType @"
+        var instance = new Id(""Some_string_"");
+        Check.That(string.IsInterned(instance.Value)).IsNotNull();
+        "
+    }
 
-    runGeneratedTest idType @"
-    var instance = new Id(""Some_string_"");
-    Check.That(string.IsInterned(instance.Value)).IsNotNull();
-    "
+    test "ToString return the same string" {
+        let idType = makeIdFromType<string> id
 
-[<Test>]
-let ``ToString return the same string`` () =
-    let idType = makeIdFromType<string> id
+        runGeneratedTest idType @"
+        var str = string.Intern(""Test"");
+        var instance = new Id(str);
+        Check.That(instance.ToString()).IsSameReferenceThan(str);
+        "
+    }
 
-    runGeneratedTest idType @"
-    var str = string.Intern(""Test"");
-    var instance = new Id(str);
-    Check.That(instance.ToString()).IsSameReferenceThan(str);
-    "
+    test "Null ToString is empty string" {
 
-[<Test>]
-let ``Null ToString is empty string`` () =
-    let idType = makeIdFromType<Nullable<int>> id
+        let idType = makeIdFromType<Nullable<int>> id
     
-    runGeneratedTest idType @"
-    var instance = new Id(null);
-    Check.That(instance.ToString()).IsEqualTo("""");
-    "
+        runGeneratedTest idType @"
+        var instance = new Id(null);
+        Check.That(instance.ToString()).IsEqualTo("""");
+        "
+    }
 
-[<Test>]
-let ``ToString is lifted`` () =
-    let idType = makeIdFromType<Guid> id
+    test "ToString is lifted" {
+        let idType = makeIdFromType<Guid> id
 
-    runGeneratedTest idType @"
-    var guid = Guid.NewGuid();
-    var instance = new Id(guid);
-    Check.That(instance.ToString()).IsEqualTo(guid.ToString());
-    "
+        runGeneratedTest idType @"
+        var guid = Guid.NewGuid();
+        var instance = new Id(guid);
+        Check.That(instance.ToString()).IsEqualTo(guid.ToString());
+        "
+    }
 
-[<Test>]
-let ``IFormattable is lifted`` () =
-    let idType = makeIdFromType<double> id
+    test "IFormattable is lifted" {
+        let idType = makeIdFromType<double> id
 
-    runGeneratedTest idType @"
-    var dbl = 4.2;
-    var instance = new Id(dbl);
+        runGeneratedTest idType @"
+        var dbl = 4.2;
+        var instance = new Id(dbl);
     
-    Check.That(instance.ToString(""0.000""))
-        .IsEqualTo(dbl.ToString(""0.000""));
+        Check.That(instance.ToString(""0.000""))
+            .IsEqualTo(dbl.ToString(""0.000""));
 
-    Check.That(instance.ToString(""0.000"", CultureInfo.InvariantCulture))
-        .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
+        Check.That(instance.ToString(""0.000"", CultureInfo.InvariantCulture))
+            .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
 
-    var formattable = instance as IFormattable;
-    Check.That(formattable).IsNotNull();
-    Check.That(formattable.ToString(""0.000"", CultureInfo.InvariantCulture))
-        .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
-    "
+        var formattable = instance as IFormattable;
+        Check.That(formattable).IsNotNull();
+        Check.That(formattable.ToString(""0.000"", CultureInfo.InvariantCulture))
+            .IsEqualTo(dbl.ToString(""0.000"", CultureInfo.InvariantCulture));
+        "
 
-[<Test>]
-let ``Check is called on creation`` () =
-    let idType = makeIdFromType<int> id
+    }
 
-    runGeneratedTest' idType @"
-    Check.ThatCode(() => new Id(-1)).Throws<InvalidOperationException>();
-    Check.ThatCode(() => new Id(0)).DoesNotThrow();
-    " @"
-    partial struct Id
-    {
-        partial void CheckValue(int value)
+    test "Check is called on creation" {
+        let idType = makeIdFromType<int> id
+
+        runGeneratedTest' idType @"
+        Check.ThatCode(() => new Id(-1)).Throws<InvalidOperationException>();
+        Check.ThatCode(() => new Id(0)).DoesNotThrow();
+        " @"
+        partial struct Id
         {
-            if (value < 0)
+            partial void CheckValue(int value)
             {
-                throw new InvalidOperationException(""Nope"");
+                if (value < 0)
+                {
+                    throw new InvalidOperationException(""Nope"");
+                }
             }
         }
+        "
     }
-"
+]
+
+[<Tests>]
+let test = testList "Equality" tests

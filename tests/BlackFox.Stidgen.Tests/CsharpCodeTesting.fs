@@ -26,7 +26,7 @@ let private createCompilation (code:string seq) =
         |]
 
     let options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-    CSharpCompilation.Create(assemblyName, syntaxTrees, references, options);
+    CSharpCompilation.Create(assemblyName, syntaxTrees, references, options)
 
 let private loadCsharpCode code =
     let compilation = createCompilation code
