@@ -205,3 +205,7 @@ FakesAssemblies/
 
 #FAKE cache folder
 .fake/
+
+# Paket bug
+FSharp.Core.optdata
+FSharp.Core.sigdata

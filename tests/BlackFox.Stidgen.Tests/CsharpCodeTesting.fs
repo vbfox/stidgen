@@ -21,7 +21,6 @@ let private createCompilation (code:string seq) =
             metadataRef<obj>
             metadataRef<System.Linq.Enumerable>
             metadataRef<System.CodeDom.Compiler.GeneratedCodeAttribute>
-            metadataRef<NUnit.Framework.Assert>
             metadataRef<NFluent.Check>
         |]
 
@@ -78,7 +77,6 @@ using System;
 using System.Globalization;
 using System.Collections.Generic;
 using NFluent;
-using NUnit.Framework;
 
 public static class %s
 {

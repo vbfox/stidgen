@@ -789,7 +789,7 @@ module GeneratedCodeAttribute =
     let private nameSyntax = identifier "GeneratedCode"
 
     let private toolName = Literal.String "BlackFox.Stidgen"
-    let private toolVersion = Literal.String AssemblyVersionInformation.Version
+    let private toolVersion = Literal.String AssemblyVersionInformation.AssemblyVersion
     let private attribute = makeAttribute nameSyntax [toolName; toolVersion]
 
     let inline private addToMember (typeMember: #SyntaxNode) =

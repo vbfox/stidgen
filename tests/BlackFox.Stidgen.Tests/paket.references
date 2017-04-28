@@ -1,7 +1,5 @@
 FSharp.Core
 Microsoft.CodeAnalysis.CSharp.Workspaces
-NUnit
 NFluent
-FsUnit
 FParsec
 Expecto
