@@ -442,17 +442,17 @@ module private Casts =
 module private InterfaceLift =
     open System.Reflection
 
-    type getNullCheckType = MethodInfo -> ParsedInfo -> StatementSyntax
+    type GetNullCheckType = MethodInfo -> ParsedInfo -> StatementSyntax
 
     type InterfaceLiftParams =
         {
             Explicit: bool
         } 
     
-    type interfaceLift =
+    type InterfaceLift =
         {
             LiftedType : Type
-            GetNullCheck : getNullCheckType
+            GetNullCheck : GetNullCheckType
             Info : ParsedInfo
             Params : InterfaceLiftParams
         }
@@ -465,8 +465,8 @@ module private InterfaceLift =
             Info = info
         }
 
-    let inline type' (lift : interfaceLift) = lift.LiftedType
-    let inline name (lift : interfaceLift) = NameSyntax.FromType(type' lift)
+    let inline type' (lift : InterfaceLift) = lift.LiftedType
+    let inline name (lift : InterfaceLift) = NameSyntax.FromType(type' lift)
 
     let private makeMember (m : MethodInfo) lift =
         // Initial declaration
@@ -783,6 +783,17 @@ module private ParseMethods =
 
         decl |> addMembers members
 
+module private DebuggerDisplayAttribute =
+    let private nameSyntax = identifier "DebuggerDisplay"
+
+    let private mkAttribute info =
+        let text = sprintf "{%s,nq}" info.FieldName
+        makeAttribute nameSyntax [Literal.String text]
+
+    let add info (decl : StructDeclarationSyntax) =
+        let attr = mkAttribute info
+        decl |> addAttribute attr
+
 /// Add the [GeneratedCodeAttribute] for each generated member
 module GeneratedCodeAttribute = 
     // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
@@ -839,6 +850,7 @@ let private makeClass info =
         |> Convertible.addIConvertibleMembers info
         |> Formattable.addFormattable info
         |> GeneratedCodeAttribute.addToAllMembers
+        |> DebuggerDisplayAttribute.add info
 
 let private makeInfo idType =
     let namespaceProvided = not (String.IsNullOrEmpty(idType.Namespace))
@@ -892,7 +904,11 @@ let makeRootNode (idTypes : IdType seq) =
     let fileLevelNodes = infos |> makeFileLevelNodes
 
     emptyFile
-        |> addUsings [ "System"; "System.CodeDom.Compiler" (*GeneratedCodeAttribute*)]
+        |> addUsings [
+            "System"
+            "System.CodeDom.Compiler" (*GeneratedCodeAttribute*)
+            "System.Diagnostics" (* DebuggerDisplayAttribute *)
+        ]
         |> SerializationAttributes.addUsing infos
         |> addMembers fileLevelNodes
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
