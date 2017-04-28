@@ -28,14 +28,12 @@ let rec private buildPaths acc (input : SearchOption list) =
     | Directory(name) :: t -> 
         let subDirs = 
             acc
-            |> List.map (checkSubDirs false name)
-            |> List.concat
+            |> List.collect (checkSubDirs false name)
         buildPaths subDirs t
     | Drive(name) :: t -> 
         let subDirs = 
             acc
-            |> List.map (checkSubDirs true name)
-            |> List.concat
+            |> List.collect (checkSubDirs true name)
         buildPaths subDirs t
     |  [Recursive] -> 
         let dirs = 
