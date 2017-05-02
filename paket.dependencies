@@ -1,18 +1,14 @@
-version 3.25.1
+version 4.8.4
 
 source https://nuget.org/api/v2
 
 redirects: on
-framework: >= net45
 
 // Code
 nuget FSharp.Core ~> 4
-nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 1
+nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 2
 nuget FParsec
 nuget BlackFox.ColoredPrintf ~> 0.1
-
-// IL-Repack doesn't like asssembly redirects
-nuget Microsoft.Composition 1.0.27
 
 // Unit tests
 nuget Expecto 4.1.1
