@@ -220,7 +220,8 @@ Task "Pack" [] <| fun _ ->
         (fun p ->
             { p with
                 Libraries = !! (appBinDir </> "*.dll")
-                ToolPath = rootDir </> "ilrepack.exe"
+                SearchDirectories = [appBinDir]
+                ToolPath = rootDir </> "packages" </> "ILRepack" </> "tools" </> "ilrepack.exe"
             })
         (artifactsDir </> "merged.exe")
         (appBinDir </> "stidgen.exe")

@@ -18,3 +18,4 @@ nuget NFluent ~> 1.3
 nuget FAKE
 nuget SourceLink.Fake ~> 1.1
 github fsharp/FAKE modules/Octokit/Octokit.fsx
+nuget ILRepack
