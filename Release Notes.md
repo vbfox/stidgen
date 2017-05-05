@@ -1,3 +1,10 @@
+### New in 1.0
+
+* Use FParsec to parse the configuration
+* Use BlackFox.ColoredPrintf instead of an internal solution
+* Implement `IComparable`
+* Add `[DebuggerDisplayAttribute]` to the generated types
+
 ### New in 0.5.4
 * Added color output to the console
 * Display a message on the console when no file is matched and return '-1' as error level.
