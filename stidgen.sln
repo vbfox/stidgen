@@ -5,21 +5,18 @@ VisualStudioVersion = 15.0.26403.7
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8D5C639B-3DFC-4CA4-8C3B-5CC939D3D8E8}"
 	ProjectSection(SolutionItems) = preProject
-		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		build.cmd = build.cmd
 		build\build.fsx = build\build.fsx
-		newparser.fsx = newparser.fsx
-		paket.cmd = paket.cmd
 		paket.dependencies = paket.dependencies
 		Readme.md = Readme.md
 		Release Notes.md = Release Notes.md
 		Settings.FSharpLint = Settings.FSharpLint
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BlackFox.Stidgen", "src\BlackFox.Stidgen\BlackFox.Stidgen.fsproj", "{0A78F77F-6316-406D-9A1E-DA3DFE87443B}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "BlackFox.Stidgen", "src\BlackFox.Stidgen\BlackFox.Stidgen.fsproj", "{0A78F77F-6316-406D-9A1E-DA3DFE87443B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BlackFox.Stidgen.Tests", "tests\BlackFox.Stidgen.Tests\BlackFox.Stidgen.Tests.fsproj", "{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}"
+Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "BlackFox.Stidgen.Tests", "tests\BlackFox.Stidgen.Tests\BlackFox.Stidgen.Tests.fsproj", "{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
