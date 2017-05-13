@@ -38,18 +38,21 @@ let gitRaw = environVarOrDefault "gitRaw" ("https://raw.github.com/" + gitOwner)
 // Build steps
 // --------------------------------------------------------------------------------------
 
+let inline versionPartOrZero x = if x < 0 then 0 else x
+
 // Read additional information from the release notes document
 let release =
     let fromFile = LoadReleaseNotes (rootDir </> "Release Notes.md")
     if buildServer = AppVeyor then
-        printfn "%s" appVeyorBuildVersion
-
         let appVeyorBuildVersion = int appVeyorBuildVersion
         let nugetVer = sprintf "%s-appveyor%04i" fromFile.NugetVersion appVeyorBuildVersion
-        printfn "(%s)" fromFile.AssemblyVersion
         let asmVer = System.Version.Parse(fromFile.AssemblyVersion)
-        printfn "(%i, %i, %i, %i)" asmVer.Major asmVer.Minor asmVer.Build appVeyorBuildVersion
-        let asmVer = System.Version(asmVer.Major, asmVer.Minor, asmVer.Build, appVeyorBuildVersion)
+        let asmVer =
+            System.Version(
+                versionPartOrZero asmVer.Major,
+                versionPartOrZero asmVer.Minor,
+                versionPartOrZero asmVer.Build,
+                versionPartOrZero appVeyorBuildVersion)
         ReleaseNotes.New(asmVer.ToString(), nugetVer, fromFile.Date, fromFile.Notes)
     else
         fromFile
