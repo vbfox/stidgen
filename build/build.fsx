@@ -42,6 +42,7 @@ let gitRaw = environVarOrDefault "gitRaw" ("https://raw.github.com/" + gitOwner)
 let release =
     let fromFile = LoadReleaseNotes (rootDir </> "Release Notes.md")
     if buildServer = AppVeyor then
+        printfn "%s" appVeyorBuildVersion
         let appVeyorBuildVersion = int appVeyorBuildVersion
         let nugetVer = sprintf "%s-appveyor%04i" fromFile.NugetVersion appVeyorBuildVersion
         let asmVer = System.Version.Parse(fromFile.AssemblyVersion)
