@@ -43,9 +43,12 @@ let release =
     let fromFile = LoadReleaseNotes (rootDir </> "Release Notes.md")
     if buildServer = AppVeyor then
         printfn "%s" appVeyorBuildVersion
+
         let appVeyorBuildVersion = int appVeyorBuildVersion
         let nugetVer = sprintf "%s-appveyor%04i" fromFile.NugetVersion appVeyorBuildVersion
+        printfn "(%s)" fromFile.AssemblyVersion
         let asmVer = System.Version.Parse(fromFile.AssemblyVersion)
+        printfn "(%i, %i, %i, %i)" asmVer.Major asmVer.Minor asmVer.Build appVeyorBuildVersion
         let asmVer = System.Version(asmVer.Major, asmVer.Minor, asmVer.Build, appVeyorBuildVersion)
         ReleaseNotes.New(asmVer.ToString(), nugetVer, fromFile.Date, fromFile.Notes)
     else
