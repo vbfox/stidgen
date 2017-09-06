@@ -49,7 +49,7 @@ module TaskDefinitionHelper =
         member __.Zero() = ()
         member __.Delay f = f
         member __.Run f =
-            registerTask meta (fun () -> f())
+            registerTask meta f
             meta
 
     /// Define a task with it's dependencies
