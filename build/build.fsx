@@ -67,8 +67,19 @@ let (|Fsproj|Csproj|Vbproj|) (projFileName:string) =
     | f when f.EndsWith("vbproj") -> Vbproj
     | _                           -> failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
 
+// --------------------------------------------------------------------------------------
+// Clean build results
+
+let clean = task "Clean" [] {
+    CleanDir artifactsDir
+
+    !! solutionFile
+    |> MSBuildRelease "" "Clean"
+    |> ignore
+}
+
 // Generate assembly info files with the right version & up-to-date information
-task "AssemblyInfo" ["?Clean"] {
+let assemblyInfo = task "AssemblyInfo" [ clean.IfNeeded ] {
     let getAssemblyInfoAttributes projectName =
         [ Attribute.Title (projectName)
           Attribute.Product project
@@ -95,20 +106,9 @@ task "AssemblyInfo" ["?Clean"] {
 }
 
 // --------------------------------------------------------------------------------------
-// Clean build results
-
-task "Clean" [] {
-    CleanDir artifactsDir
-
-    !! solutionFile
-    |> MSBuildRelease "" "Clean"
-    |> ignore
-}
-
-// --------------------------------------------------------------------------------------
 // Build library & test project
 
-task "Build" ["AssemblyInfo"] {
+let build = task "Build" [ assemblyInfo ] {
     !! solutionFile
     |> MSBuildRelease "" "Rebuild"
     |> ignore
@@ -117,7 +117,7 @@ task "Build" ["AssemblyInfo"] {
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner
 
-task "RunTests" [ "Build"] {
+let runTests = task "RunTests" [ build ] {
     !! testAssemblies
         |> Expecto (fun p ->
             { p with
@@ -132,7 +132,7 @@ task "RunTests" [ "Build"] {
 
 open SourceLink
 
-task "SourceLink" [ "Build" ] {
+let sourceLink = task "SourceLink" [ build ] {
     let baseUrl = sprintf "%s/%s/{0}/%%var2%%" gitRaw gitName
     tracefn "SourceLink base URL: %s" baseUrl
 
@@ -145,16 +145,14 @@ task "SourceLink" [ "Build" ] {
     )
 }
 
-let finalBinaries = if isMono then "Build" else "SourceLink"
-
-EmptyTask "FinalBinaries" [ finalBinaries ]
+let finalBinaries = EmptyTask "FinalBinaries" [ (if isMono then build else sourceLink) ]
 
 // --------------------------------------------------------------------------------------
 // Build a Zip package
 
 let zipPath = artifactsDir </> (sprintf "%s-%s.zip" project release.NugetVersion)
 
-task "Zip" ["FinalBinaries"] {
+let zip = task "Zip" [ finalBinaries ] {
     let comment = sprintf "%s v%s" project release.NugetVersion
     let files =
         !! (appBinDir </> "*.dll")
@@ -173,7 +171,7 @@ task "Zip" ["FinalBinaries"] {
 // --------------------------------------------------------------------------------------
 // Build a NuGet package
 
-task "NuGet" ["FinalBinaries"] {
+let nuget = task "NuGet" [ finalBinaries ] {
     Paket.Pack <| fun p ->
         { p with
             OutputPath = artifactsDir
@@ -185,7 +183,7 @@ task "NuGet" ["FinalBinaries"] {
     |> AppVeyor.PushArtifacts
 }
 
-task "PublishNuget" ["NuGet"] {
+let publishNuget = task "PublishNuget" [ nuget ] {
     let key =
         match environVarOrNone "nuget-key" with
         | Some(key) -> key
@@ -199,7 +197,7 @@ task "PublishNuget" ["NuGet"] {
 
 #load "../paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 
-task "GitRelease" [] {
+let gitRelease = task "GitRelease" [] {
     let remote =
         Git.CommandHelper.getGitResult "" "remote -v"
         |> Seq.filter (fun (s: string) -> s.EndsWith("(push)"))
@@ -214,7 +212,7 @@ task "GitRelease" [] {
     Git.Branches.pushTag "" remote release.NugetVersion
 }
 
-task "GitHubRelease" ["Zip"] {
+let githubRelease = task "GitHubRelease" [ zip ] {
     let user =
         match getBuildParam "github-user" with
         | s when not (String.IsNullOrWhiteSpace s) -> s
@@ -232,7 +230,7 @@ task "GitHubRelease" ["Zip"] {
     |> Async.RunSynchronously
 }
 
-task "Pack" [] {
+let pack = task "Pack" [] {
     Fake.ILMergeHelper.ILMerge
         (fun p ->
             { p with
@@ -247,12 +245,11 @@ task "Pack" [] {
 // --------------------------------------------------------------------------------------
 // Empty targets for readability
 
-EmptyTask "Default" ["RunTests"]
-EmptyTask "Packages" ["Zip"; "NuGet"]
-EmptyTask "Release" ["GitHubRelease"; "PublishNuget"]
-EmptyTask "CI" ["Clean"; "RunTests"; "Packages"]
+let packages = EmptyTask "Packages" [ zip; nuget ]
+let releaseTask = EmptyTask "Release" [ githubRelease; publishNuget ]
+let ci = EmptyTask "CI" [ clean; runTests; packages ]
 
 // --------------------------------------------------------------------------------------
 // Go! Go! Go!
 
-RunTaskOrDefault "Default"
+RunTaskOrDefault (EmptyTask "Default" [ runTests ])

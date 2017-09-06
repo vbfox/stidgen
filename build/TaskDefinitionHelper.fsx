@@ -9,40 +9,24 @@ module TaskDefinitionHelper =
     open System
     open System.Text.RegularExpressions
 
-    type Dependency =
-        | Direct of dependsOn : string
-        | Soft of dependsOn : string
-
-    let inline private (|RegExp|_|) pattern input =
-        let m = Regex.Match(input, pattern, RegexOptions.Compiled)
-        if m.Success && m.Groups.Count > 0 then
-            Some (m.Groups.[1].Value)
-        else
-            None
-
-    let inline private parseDependency str =
-        match str with
-        | RegExp @"^\?(.*)$" dep -> Soft dep
-        | dep -> Direct dep
-
-    let inline private parseDependencies dependencies =
-        [
-            for dependency in dependencies do
-                yield parseDependency dependency
-        ]
-
-    type TaskMetadata = {
+    type TaskInfo = {
         name: string
-        dependencies: Dependency list
+        dependencies: TaskInfo list
+        isSoft: bool
     }
+    with
+        member this.Always
+            with get() = { this with isSoft = false }
+        member this.IfNeeded
+            with get() = { this with isSoft = true }
 
-    let mutable private tasks : TaskMetadata list = []
+    let mutable private tasks : TaskInfo list = []
 
     let inline private registerTask meta body =
         Target meta.name body
         tasks <- meta::tasks
 
-    type TaskBuilder(meta: TaskMetadata) =
+    type TaskBuilder(meta: TaskInfo) =
         member __.TryFinally(f, compensation) =
             try
                 f()
@@ -66,31 +50,38 @@ module TaskDefinitionHelper =
         member __.Delay f = f
         member __.Run f =
             registerTask meta (fun () -> f())
+            meta
 
     /// Define a task with it's dependencies
     let Task name dependencies body =
-        registerTask { name = name; dependencies = parseDependencies dependencies } body
+        let taskInfo = { name = name; dependencies = dependencies; isSoft = false }
+        registerTask taskInfo body
+        taskInfo
 
     /// Define a task with it's dependencies
     let inline task name dependencies =
-        TaskBuilder({ name = name; dependencies = parseDependencies dependencies })
+        let taskInfo = { name = name; dependencies = dependencies; isSoft = false }
+        TaskBuilder(taskInfo)
 
     /// Define a task without any body, only dependencies
     let inline EmptyTask name dependencies =
-        registerTask { name = name; dependencies = parseDependencies dependencies } (fun () -> ())
+        let taskInfo = { name = name; dependencies = dependencies; isSoft = false }
+        registerTask taskInfo (fun () -> ())
+        taskInfo
 
     /// Send all the defined inter task dependencies to FAKE
     let ApplyTasksDependencies () =
          for taskMetadata in tasks do
             for dependency in taskMetadata.dependencies do
-                match dependency with
-                | Direct dep -> dep ==> taskMetadata.name |> ignore
-                | Soft dep -> dep ?=> taskMetadata.name |> ignore
+                if dependency.isSoft then
+                    dependency.name ?=> taskMetadata.name |> ignore
+                else
+                    dependency.name ==> taskMetadata.name |> ignore
 
          tasks <- []
 
     /// Run the task specified on the command line if there was one or the
     /// default one otherwise.
-    let RunTaskOrDefault taskName =
+    let RunTaskOrDefault (taskInfo: TaskInfo) =
         ApplyTasksDependencies ()
-        RunTargetOrDefault taskName
+        RunTargetOrDefault taskInfo.name
