@@ -1,6 +1,5 @@
 ﻿#r @"../packages/FAKE/tools/FakeLib.dll"
-#load "./TaskDefinitionHelper.fsx"
-#load "./MyConsoleTraceListener.fsx"
+#load "../paket-files/vbfox/FoxSharp/src/BlackFox.FakeUtils/TypedTaskDefinitionHelper.fs"
 #load "./AppveyorEx.fsx"
 
 open Fake
@@ -10,6 +9,7 @@ open Fake.Testing.Expecto
 open System
 open System.IO
 open BlackFox
+open BlackFox.TypedTaskDefinitionHelper
 
 #load "../packages/SourceLink.Fake/tools/Fake.fsx"
 

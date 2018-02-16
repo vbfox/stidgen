@@ -1,6 +1,8 @@
-version 5.92.5
+version 5.137.2
 
-source https://nuget.org/api/v2
+source https://api.nuget.org/v3/index.json
+
+framework: >= net45
 
 redirects: on
 
@@ -19,3 +21,5 @@ nuget FAKE
 nuget SourceLink.Fake ~> 1.1
 github fsharp/FAKE modules/Octokit/Octokit.fsx
 nuget ILRepack
+github vbfox/FoxSharp src/BlackFox.FoxSharp/CommandLine.fs
+github vbfox/FoxSharp src/BlackFox.FakeUtils/TypedTaskDefinitionHelper.fs
