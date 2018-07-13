@@ -104,10 +104,13 @@ let private makeValueProperty info =
         |> addModifiers [|SyntaxKind.PublicKeyword|]
         |> addGetter body
         
+let private internEnabled info =
+    let underlyingIsString = typeof<string> = info.Id.UnderlyingType
+    info.Id.InternString && underlyingIsString
+
 /// Intern an expression of underlying type if needed && possible
 let private internIfNeeded arg info =
-    let underlyingIsString = typeof<string> = info.Id.UnderlyingType
-    if info.Id.InternString && underlyingIsString
+    if internEnabled info
     then
         let intern = WellKnownMethods.stringIntern arg
         if info.AllowNull then
@@ -180,8 +183,17 @@ module private Equality =
 /// otherwise, false.
 /// </returns>"
 
+    let private runtimeHelpersGetHashCode =
+        dottedMemberAccess' ["RuntimeHelpers"; "GetHashCode"]
+
     let private makeGetHashCode info =
-        let returnGetHashCode = ret (getHashCode info.ThisValueMemberAccess)
+        let returnGetHashCode =
+            if internEnabled info then
+                // We can use the very fast GetHashCode that uses the reference address
+                ret (invocation runtimeHelpersGetHashCode [|info.ThisValueMemberAccess|])
+            else
+                // Need to call the real one
+                ret (getHashCode info.ThisValueMemberAccess)
 
         let returnIfNull = info |> makeIfValueNull (fun block ->
             block |> addStatement (ret Literal.Zero)
@@ -189,7 +201,7 @@ module private Equality =
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Int, "GetHashCode")
         |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-        |?> (info.CanBeNull, addBodyStatement returnIfNull)
+        |?> (info.CanBeNull && not (internEnabled info), addBodyStatement returnIfNull)
         |> addBodyStatement returnGetHashCode
         |> addTriviaBefore [getHashCodeDoc]
 
@@ -202,33 +214,44 @@ module private Equality =
             typeof<Double>; typeof<Boolean>; typeof<Char>
         ]
 
+    let private objectReferenceEquals =
+        dottedMemberAccess' ["object"; "ReferenceEquals"]
+
     /// Call the most adapted underlying equals method between underlying-typed expressions.
-    let private underlyingEquals info exprA exprB eq =
-        let isPredefined = predefinedEqualityOperators |> List.exists (fun t -> info.Id.UnderlyingType = t)
-
-        let opMethod =
-            info.Id.UnderlyingType.GetMethod(
-                (if eq then "op_Equality" else "op_Inequality"),
-                BindingFlags.Static ||| BindingFlags.Public,
-                null,
-                CallingConventions.Any,
-                [|info.Id.UnderlyingType;info.Id.UnderlyingType|],
-                null)
-        
-        if isPredefined || (not (isNull opMethod)) then
-            // Prefer the operator as for CLR implementations it's an obvious optimization for native types and strings
-            let op = if eq then equals else notEquals
-            op exprA exprB :> ExpressionSyntax
-        else
-            // Otherwise Object.Equals is a safe choice
-            let equalsMethod = objectEquals exprA exprB
+    let private underlyingEquals info exprA exprB eq enableInterning =
+        if enableInterning && internEnabled info then
+            // Both should be interned strings, so we can use obj.ReferenceEquals
+            let refEquals = invocation objectReferenceEquals [|exprA; exprB|]
             if eq then
-                equalsMethod :> ExpressionSyntax
+                refEquals :> ExpressionSyntax
             else
-                not' equalsMethod :> ExpressionSyntax
+                not' refEquals :> ExpressionSyntax
+        else
+            let isPredefined = predefinedEqualityOperators |> List.exists (fun t -> info.Id.UnderlyingType = t)
 
-    let private thisValueEquals info expr =
-        underlyingEquals info info.ThisValueMemberAccess expr
+            let operatorMethod =
+                info.Id.UnderlyingType.GetMethod(
+                    (if eq then "op_Equality" else "op_Inequality"),
+                    BindingFlags.Static ||| BindingFlags.Public,
+                    null,
+                    CallingConventions.Any,
+                    [|info.Id.UnderlyingType;info.Id.UnderlyingType|],
+                    null)
+        
+            if isPredefined || (not (isNull operatorMethod)) then
+                // Prefer the operator as for CLR implementations it's an obvious optimization for native types and strings
+                let op = if eq then equals else notEquals
+                op exprA exprB :> ExpressionSyntax
+            else
+                // Otherwise Object.Equals is a safe choice
+                let equalsMethod = objectEquals exprA exprB
+                if eq then
+                    equalsMethod :> ExpressionSyntax
+                else
+                    not' equalsMethod :> ExpressionSyntax
+
+    let private thisValueEquals info expr eq enableInterning =
+        underlyingEquals info info.ThisValueMemberAccess expr eq enableInterning
 
     let private makeStaticEquals info =
         let parameterA = identifier "a"
@@ -236,7 +259,7 @@ module private Equality =
 
         let value = value info
 
-        let body = ret (underlyingEquals info (value parameterA) (value parameterB) true)
+        let body = ret (underlyingEquals info (value parameterA) (value parameterB) true true)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword|]
@@ -257,7 +280,7 @@ module private Equality =
         let returnFalseForIncorrectType = if' incorrectTypeCondition (block [|ret Literal.False|])
 
         let returnArgCastToUnderlyingEqualsValue = 
-            ret (thisValueEquals info (parameter |> cast info.UnderlyingTypeSyntax) true)
+            ret (thisValueEquals info (parameter |> cast info.UnderlyingTypeSyntax) true true)
 
         let ifIsUnderlyingReturnEquals =
             if'
@@ -269,6 +292,7 @@ module private Equality =
                 thisValueEquals
                     info
                     (parameter |> cast info.GeneratedTypeSyntax :> ExpressionSyntax |> info.ValueAccess)
+                    true
                     true
                 )
 
@@ -283,7 +307,7 @@ module private Equality =
     let private makeEqualsGenerated info =
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
-        let body = ret (thisValueEquals info (info.ValueAccess parameter) true)
+        let body = ret (thisValueEquals info (info.ValueAccess parameter) true true)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword|]
@@ -293,7 +317,7 @@ module private Equality =
     let private makeEqualsUnderlying info =
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
-        let body = ret (thisValueEquals info parameter true)
+        let body = ret (thisValueEquals info parameter true false)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword|]
@@ -305,13 +329,13 @@ module private Equality =
     let private iequatableOf t =
         SyntaxFactory.QualifiedName(iEquatableNamespace, NameSyntax.MakeGeneric iEquatable.Name [|t|])
 
-    let private makeOperator info eq leftArgType rightArgType leftValueExtractor rightValueExtractor =
+    let private makeOperator info eq leftArgType rightArgType leftValueExtractor rightValueExtractor enableInterning =
         let left = identifier "left"
         let right = identifier "right"
 
         let leftValue = leftValueExtractor info left
         let rightValue = rightValueExtractor info right
-        let body = ret (underlyingEquals info leftValue rightValue eq)
+        let body = ret (underlyingEquals info leftValue rightValue eq enableInterning)
 
         let operatorToken = if eq then SyntaxKind.EqualsEqualsToken else SyntaxKind.ExclamationEqualsToken
         SyntaxFactory.OperatorDeclaration(TypeSyntax.Bool, SyntaxFactory.Token(operatorToken))
@@ -326,10 +350,10 @@ module private Equality =
         let underlying = info.UnderlyingTypeSyntax
 
         classDeclaration
-        |> addMember (makeOperator info true generated generated value value)
-        |> addMember (makeOperator info false generated generated value value)
-        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info true generated underlying value direct))
-        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info false generated underlying value direct))
+        |> addMember (makeOperator info true generated generated value value true)
+        |> addMember (makeOperator info false generated generated value value true)
+        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info true generated underlying value direct false))
+        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info false generated underlying value direct false))
 
     let addEqualityMembers info (decl:StructDeclarationSyntax) =
         decl
@@ -908,6 +932,7 @@ let makeRootNode (idTypes : IdType seq) =
             "System"
             "System.CodeDom.Compiler" (*GeneratedCodeAttribute*)
             "System.Diagnostics" (* DebuggerDisplayAttribute *)
+            "System.Runtime.CompilerServices" (* RuntimeHelpers *)
         ]
         |> SerializationAttributes.addUsing infos
         |> addMembers fileLevelNodes
