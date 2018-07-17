@@ -94,14 +94,16 @@ module private SerializationAttributes =
         |> DataContract.addDataMember info
 
 let private makeValueField info =
+    // Not marked as readonly for the potential perf gain
+    // See https://codeblog.jonskeet.uk/2014/07/16/micro-optimization-the-surprising-inefficiency-of-readonly-fields/
     field info.UnderlyingTypeSyntax info.FieldName
-        |> addModifiers [|SyntaxKind.PrivateKeyword; SyntaxKind.ReadOnlyKeyword|]
+        |> addModifiers [| SyntaxKind.PrivateKeyword |]
         |> SerializationAttributes.addToField info
 
 let private makeValueProperty info =
     let body = block [| ret info.ThisValueMemberAccess |]
     SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, info.PropertyName)
-        |> addModifiers [|SyntaxKind.PublicKeyword|]
+        |> addModifiers [| SyntaxKind.PublicKeyword |]
         |> addGetter body
         
 /// Is interning enabled (Config + underlying = string)
