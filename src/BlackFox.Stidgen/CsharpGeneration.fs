@@ -592,7 +592,7 @@ module private Convertible =
         let lift = makeLift<IConvertible> makeNullCheck { Explicit=true } info
         addLiftedMethods lift
 
-module private Comparable =
+module private NonGenericComparable =
     open System.Globalization
     open InterfaceLift
     open System.Reflection
@@ -612,6 +612,45 @@ module private Comparable =
 /// <paramref name=""other"" />. Greater than zero This instance follows
 /// <paramref name=""other"" /> in the sort order.
 /// </returns>"
+
+    let private makeNullCheck _ (info:ParsedInfo) =
+        if'
+            (equals info.ThisValueMemberAccess Literal.Null)
+            (ifelse
+                (equals (identifier "obj") Literal.Null)
+                (ret Literal.Zero)
+                (ret (Literal.Int -1)) // invert of x.CompareTo(null)=1
+            )
+        :> StatementSyntax
+
+    let private iComparable = typedefof<IComparable>
+    let private iComparableNamespace = NameSyntax.MakeQualified(iComparable.Namespace.Split('.'))
+
+    /// Implement IComparable of the underlying on the Id type
+    let private addLiftedComparable (info: ParsedInfo) decl =
+        info.Id.UnderlyingType.GetInterfaces()
+        |> Array.tryFind(fun interf -> interf = iComparable)
+        |> Option.map(fun interf ->
+            let lift = {
+                LiftedType = interf
+                GetNullCheck = makeNullCheck
+                Params = { Explicit = true }
+                Info = info }
+
+            addLiftedMethods lift decl
+        )
+        |> Option.defaultValue decl
+
+    let addComparable info decl =
+        decl
+        |?> (info.Id.EqualsUnderlying, addLiftedComparable info)
+
+module private GenericComparable =
+    open System.Globalization
+    open InterfaceLift
+    open System.Reflection
+
+    let private docComment = NonGenericComparable.docComment
 
     let private makeNullCheck (m: MethodInfo) (info:ParsedInfo) =
         let equatableType = m.DeclaringType.GenericTypeArguments.[0]
@@ -891,7 +930,8 @@ let private makeClass info =
         |> addMember' makeCheckValuePartial
         |> addMember' makeToString
         |> Equality.addEqualityMembers info
-        |> Comparable.addComparable info
+        |> GenericComparable.addComparable info
+        |> NonGenericComparable.addComparable info
         |> Casts.addAll info
         |> ParseMethods.addParseMethods info
         |> Convertible.addIConvertibleMembers info
