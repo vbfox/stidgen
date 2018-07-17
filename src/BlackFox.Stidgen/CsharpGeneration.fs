@@ -104,9 +104,9 @@ let private makeValueProperty info =
         |> addModifiers [|SyntaxKind.PublicKeyword|]
         |> addGetter body
         
-let private internEnabled info =
-    let underlyingIsString = typeof<string> = info.Id.UnderlyingType
-    info.Id.InternString && underlyingIsString
+/// Is interning enabled (Config + underlying = string)
+let inline private internEnabled info =
+    info.Id.InternString && (typeof<string> = info.Id.UnderlyingType)
 
 /// Intern an expression of underlying type if needed && possible
 let private internIfNeeded arg info =
@@ -183,14 +183,17 @@ module private Equality =
 /// otherwise, false.
 /// </returns>"
 
-    let private runtimeHelpersGetHashCode =
-        dottedMemberAccess' ["RuntimeHelpers"; "GetHashCode"]
+    module private MemberAccess =
+        let objectReferenceEquals = dottedMemberAccess' ["object"; "ReferenceEquals"]
+        let debugAssert = dottedMemberAccess' ["Debug"; "Assert"]
+        let stringIsInterned = dottedMemberAccess' ["string"; "IsInterned"]
+        let runtimeHelpersGetHashCode = dottedMemberAccess' ["RuntimeHelpers"; "GetHashCode"]
 
     let private makeGetHashCode info =
         let returnGetHashCode =
             if internEnabled info then
                 // We can use the very fast GetHashCode that uses the reference address
-                ret (invocation runtimeHelpersGetHashCode [|info.ThisValueMemberAccess|])
+                ret (invocation MemberAccess.runtimeHelpersGetHashCode [|info.ThisValueMemberAccess|])
             else
                 // Need to call the real one
                 ret (getHashCode info.ThisValueMemberAccess)
@@ -214,14 +217,24 @@ module private Equality =
             typeof<Double>; typeof<Boolean>; typeof<Char>
         ]
 
-    let private objectReferenceEquals =
-        dottedMemberAccess' ["object"; "ReferenceEquals"]
+    let private assertValueIsInterned info expr =
+        invocation MemberAccess.debugAssert
+            [|
+                or'
+                    (equals expr Literal.Null)
+                    (invocation MemberAccess.stringIsInterned [| expr |])
+                Literal.String "Value should always be interned if interning is enabled"
+            |]
+            |> statement
+    
+    let inline private assertValueIsInternedIfNeeded info expr method =
+        (|?>) method (internEnabled info, addBodyStatement (assertValueIsInterned info expr))
 
     /// Call the most adapted underlying equals method between underlying-typed expressions.
     let private underlyingEquals info exprA exprB eq enableInterning =
         if enableInterning && internEnabled info then
             // Both should be interned strings, so we can use obj.ReferenceEquals
-            let refEquals = invocation objectReferenceEquals [|exprA; exprB|]
+            let refEquals = invocation MemberAccess.objectReferenceEquals [|exprA; exprB|]
             if eq then
                 refEquals :> ExpressionSyntax
             else
@@ -265,6 +278,8 @@ module private Equality =
         |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword|]
         |> addParameter "a" info.GeneratedTypeSyntax
         |> addParameter "b" info.GeneratedTypeSyntax
+        |> assertValueIsInternedIfNeeded info (value parameterA)
+        |> assertValueIsInternedIfNeeded info (value parameterB)
         |> addBodyStatement body
 
     let private makeEquals info =
@@ -279,8 +294,9 @@ module private Equality =
                 notIs info.GeneratedTypeSyntax :> ExpressionSyntax
         let returnFalseForIncorrectType = if' incorrectTypeCondition (block [|ret Literal.False|])
 
-        let returnArgCastToUnderlyingEqualsValue = 
-            ret (thisValueEquals info (parameter |> cast info.UnderlyingTypeSyntax) true true)
+        let returnArgCastToUnderlyingEqualsValue =
+            // Interning optimization can't be enabled (We can receive any string)
+            ret (thisValueEquals info (parameter |> cast info.UnderlyingTypeSyntax) true false)
 
         let ifIsUnderlyingReturnEquals =
             if'
@@ -299,6 +315,7 @@ module private Equality =
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
         |> addParameter parameterName TypeSyntax.Object
+        |> assertValueIsInternedIfNeeded info info.ThisValueMemberAccess
         |> addBodyStatement returnFalseForIncorrectType
         |?> (info.Id.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
         |> addBodyStatement returnArgCastToIdValueEqualsValue
@@ -312,6 +329,8 @@ module private Equality =
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
         |> addModifiers [|SyntaxKind.PublicKeyword|]
         |> addParameter parameterName info.GeneratedTypeSyntax
+        |> assertValueIsInternedIfNeeded info info.ThisValueMemberAccess
+        |> assertValueIsInternedIfNeeded info (info.ValueAccess parameter)
         |> addBodyStatement body
         
     let private makeEqualsUnderlying info =
@@ -342,6 +361,8 @@ module private Equality =
         |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
         |> addParameter "left" leftArgType
         |> addParameter "right" rightArgType
+        |?> (enableInterning, assertValueIsInternedIfNeeded info leftValue)
+        |?> (enableInterning, assertValueIsInternedIfNeeded info rightValue)
         |> addBodyStatement body
 
     let private addOperators info (classDeclaration:StructDeclarationSyntax) =
