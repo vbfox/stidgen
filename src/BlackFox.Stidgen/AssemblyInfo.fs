@@ -5,13 +5,13 @@ open System.Reflection
 [<assembly: AssemblyTitleAttribute("BlackFox.Stidgen")>]
 [<assembly: AssemblyProductAttribute("stidgen")>]
 [<assembly: AssemblyDescriptionAttribute("Strongly Typed ID type Generator")>]
-[<assembly: AssemblyVersionAttribute("1.0")>]
-[<assembly: AssemblyFileVersionAttribute("1.0")>]
+[<assembly: AssemblyVersionAttribute("1.1")>]
+[<assembly: AssemblyFileVersionAttribute("1.1")>]
 do ()
 
 module internal AssemblyVersionInformation =
     let [<Literal>] AssemblyTitle = "BlackFox.Stidgen"
     let [<Literal>] AssemblyProduct = "stidgen"
     let [<Literal>] AssemblyDescription = "Strongly Typed ID type Generator"
-    let [<Literal>] AssemblyVersion = "1.0"
-    let [<Literal>] AssemblyFileVersion = "1.0"
+    let [<Literal>] AssemblyVersion = "1.1"
+    let [<Literal>] AssemblyFileVersion = "1.1"
