@@ -1,14 +1,14 @@
-version 5.137.2
+version 5.174.5
 
 source https://api.nuget.org/v3/index.json
 
-framework: >= net45
+framework: >= net451
 
-redirects: on
+redirects: off
 
 // Code
 nuget FSharp.Core ~> 4
-nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 2
+nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 2.8
 nuget FParsec
 nuget BlackFox.ColoredPrintf ~> 0.1
 
