@@ -178,7 +178,7 @@ module private Equality =
 
     let objectEqualsDoc = parseDocumentationComment @"/// <summary>
 /// Determines whether the specified object is equal to the current object.
-/// <param name=""obj"">The object to compare with the current object.</param>
+/// <param name=""other"">The object to compare with the current object.</param>
 /// </summary>
 /// <returns>
 /// true if the specified object is equal to the current object;
@@ -224,7 +224,9 @@ module private Equality =
             [|
                 or'
                     (equals expr Literal.Null)
-                    (invocation MemberAccess.stringIsInterned [| expr |])
+                    (equals
+                        (invocation MemberAccess.stringIsInterned [| expr |])
+                        Literal.Null)
                 Literal.String "Value should always be interned if interning is enabled"
             |]
             |> statement
