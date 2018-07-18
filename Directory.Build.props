@@ -14,6 +14,9 @@
     <Authors>Julien Roncaglia</Authors>
     <Owners>Julien Roncaglia</Owners>
   </PropertyGroup>
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(ArtifactsDir)/Version.fs"  Condition="exists('$(ArtifactsDir)/Version.fs')"/>
   </ItemGroup>

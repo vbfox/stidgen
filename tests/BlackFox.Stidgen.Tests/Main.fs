@@ -1,8 +1,8 @@
 ﻿module Main
 
 open Expecto
-open BlackFox.Stidgen.Description
-open BlackFox.Stidgen.CsharpCodeTesting
+
+#nowarn "46"
 
 [<EntryPoint>]
 let main args =
