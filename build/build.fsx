@@ -3,7 +3,7 @@
 #load "./AppveyorEx.fsx"
 
 open Fake
-open Fake.Testing.Expecto
+open Fake.DotNet.Testing
 open Fake.Core
 open Fake.IO
 open Fake.Tools
@@ -119,7 +119,7 @@ let build = task "Build" [ assemblyInfo ] {
 
 let runTests = task "RunTests" [ build ] {
     !! testAssemblies
-        |> Expecto (fun p ->
+        |> Expecto.run (fun p ->
             { p with
                 FailOnFocusedTests = true
                 Parallel = false
