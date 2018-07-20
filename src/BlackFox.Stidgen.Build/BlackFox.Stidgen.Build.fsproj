@@ -5,7 +5,7 @@
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\paket-files\vbfox\FoxSharp\src\BlackFox.FoxSharp\CommandLine.fs">
+    <Compile Include="..\..\paket-files\build\vbfox\FoxSharp\src\BlackFox.FoxSharp\CommandLine.fs">
       <Paket>True</Paket>
       <Link>paket-files/CommandLine.fs</Link>
     </Compile>
