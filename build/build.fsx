@@ -3,13 +3,22 @@
 #load "./AppveyorEx.fsx"
 
 open Fake
-open Fake.AssemblyInfoFile
-open Fake.ReleaseNotesHelper
 open Fake.Testing.Expecto
+open Fake.Core
+open Fake.IO
+open Fake.Tools
+open Fake.IO.Globbing.Operators
+open Fake.IO.FileSystemOperators
+open Fake.DotNet
+open Fake.BuildServer
 open System
 open System.IO
 open BlackFox
 open BlackFox.TypedTaskDefinitionHelper
+
+BuildServer.install [
+    AppVeyor.Installer
+]
 
 #load "../packages/SourceLink.Fake/tools/Fake.fsx"
 
@@ -32,7 +41,7 @@ let gitHome = "https://github.com/" + gitOwner
 let gitName = "stidgen"
 
 /// The url for the raw files hosted
-let gitRaw = environVarOrDefault "gitRaw" ("https://raw.github.com/" + gitOwner)
+let gitRaw = Environment.environVarOrDefault "gitRaw" ("https://raw.github.com/" + gitOwner)
 
 // --------------------------------------------------------------------------------------
 // Build steps
@@ -42,9 +51,9 @@ let inline versionPartOrZero x = if x < 0 then 0 else x
 
 // Read additional information from the release notes document
 let release =
-    let fromFile = LoadReleaseNotes (rootDir </> "Release Notes.md")
-    if buildServer = AppVeyor then
-        let appVeyorBuildVersion = int appVeyorBuildVersion
+    let fromFile = ReleaseNotes.load (rootDir </> "Release Notes.md")
+    if BuildServer.buildServer = BuildServer.AppVeyor then
+        let appVeyorBuildVersion = int AppVeyor.Environment.BuildVersion
         let nugetVer = sprintf "%s-appveyor%04i" fromFile.NugetVersion appVeyorBuildVersion
         let asmVer = System.Version.Parse(fromFile.AssemblyVersion)
         let asmVer =
@@ -53,39 +62,33 @@ let release =
                 versionPartOrZero asmVer.Minor,
                 versionPartOrZero asmVer.Build,
                 versionPartOrZero appVeyorBuildVersion)
-        ReleaseNotes.New(asmVer.ToString(), nugetVer, fromFile.Date, fromFile.Notes)
+        ReleaseNotes.ReleaseNotes.New(asmVer.ToString(), nugetVer, fromFile.Date, fromFile.Notes)
     else
         fromFile
 
 AppVeyorEx.updateBuild (fun info -> { info with Version = Some release.AssemblyVersion })
 
-// Helper active pattern for project types
-let (|Fsproj|Csproj|Vbproj|) (projFileName:string) =
-    match projFileName with
-    | f when f.EndsWith("fsproj") -> Fsproj
-    | f when f.EndsWith("csproj") -> Csproj
-    | f when f.EndsWith("vbproj") -> Vbproj
-    | _                           -> failwith (sprintf "Project file %s not supported. Unknown project type." projFileName)
-
 // --------------------------------------------------------------------------------------
 // Clean build results
 
 let clean = task "Clean" [] {
-    CleanDir artifactsDir
+    Shell.cleanDir artifactsDir
 
     !! solutionFile
-    |> MSBuildRelease "" "Clean"
+    |> DotNet.MSBuild.runRelease id "" "Clean"
     |> ignore
 }
 
 // Generate assembly info files with the right version & up-to-date information
 let assemblyInfo = task "AssemblyInfo" [ clean.IfNeeded ] {
     let getAssemblyInfoAttributes projectName =
-        [ Attribute.Title (projectName)
-          Attribute.Product project
-          Attribute.Description summary
-          Attribute.Version release.AssemblyVersion
-          Attribute.FileVersion release.AssemblyVersion ]
+        [
+            Fake.DotNet.AssemblyInfo.Title projectName
+            Fake.DotNet.AssemblyInfo.Product project
+            Fake.DotNet.AssemblyInfo.Description summary
+            Fake.DotNet.AssemblyInfo.Version release.AssemblyVersion
+            Fake.DotNet.AssemblyInfo.FileVersion release.AssemblyVersion
+        ]
 
     let getProjectDetails projectPath =
         let projectName = System.IO.Path.GetFileNameWithoutExtension(projectPath)
@@ -98,10 +101,7 @@ let assemblyInfo = task "AssemblyInfo" [ clean.IfNeeded ] {
     !! sourceProjects
     |> Seq.map getProjectDetails
     |> Seq.iter (fun (projFileName, projectName, folderName, attributes) ->
-        match projFileName with
-        | Fsproj -> CreateFSharpAssemblyInfo (folderName </> "AssemblyInfo.fs") attributes
-        | Csproj -> CreateCSharpAssemblyInfo (folderName </> "Properties" </> "AssemblyInfo.cs") attributes
-        | Vbproj -> CreateVisualBasicAssemblyInfo (folderName </> "My Project" </> "AssemblyInfo.vb") attributes
+        AssemblyInfoFile.createFSharp (folderName </> "AssemblyInfo.fs") attributes
         )
 }
 
@@ -110,7 +110,7 @@ let assemblyInfo = task "AssemblyInfo" [ clean.IfNeeded ] {
 
 let build = task "Build" [ assemblyInfo ] {
     !! solutionFile
-    |> MSBuildRelease "" "Rebuild"
+    |> DotNet.MSBuild.runRelease id "" "Rebuild"
     |> ignore
 }
 
@@ -134,18 +134,18 @@ open SourceLink
 
 let sourceLink = task "SourceLink" [ build ] {
     let baseUrl = sprintf "%s/%s/{0}/%%var2%%" gitRaw gitName
-    tracefn "SourceLink base URL: %s" baseUrl
+    Trace.tracefn "SourceLink base URL: %s" baseUrl
 
     !! sourceProjects
     |> Seq.iter (fun projFile ->
         let projectName = Path.GetFileNameWithoutExtension projFile
         let proj = VsProj.LoadRelease projFile
-        tracefn "Generating SourceLink for %s on pdb: %s" projectName proj.OutputFilePdb
+        Trace.tracefn "Generating SourceLink for %s on pdb: %s" projectName proj.OutputFilePdb
         SourceLink.Index proj.CompilesNotLinked proj.OutputFilePdb rootDir baseUrl
     )
 }
 
-let finalBinaries = EmptyTask "FinalBinaries" [ (if isMono then build else sourceLink) ]
+let finalBinaries = EmptyTask "FinalBinaries" [ (if Environment.isMono then build else sourceLink) ]
 
 // --------------------------------------------------------------------------------------
 // Build a Zip package
@@ -158,7 +158,7 @@ let zip = task "Zip" [ finalBinaries ] {
         !! (appBinDir </> "*.dll")
         ++ (appBinDir </> "*.config")
         ++ (appBinDir </> "*.exe")
-    ZipHelper.CreateZip appBinDir zipPath comment 9 false files
+    Fake.IO.Zip.createZip appBinDir zipPath comment 9 false files
 
     AppVeyor.PushArtifact (fun p ->
         { p with
@@ -172,24 +172,24 @@ let zip = task "Zip" [ finalBinaries ] {
 // Build a NuGet package
 
 let nuget = task "NuGet" [ finalBinaries ] {
-    Paket.Pack <| fun p ->
+    Fake.DotNet.Paket.pack <| fun p ->
         { p with
             OutputPath = artifactsDir
             Version = release.NugetVersion
-            ReleaseNotes = toLines release.Notes
+            ReleaseNotes = String.toLines release.Notes
             WorkingDir = appBinDir }
 
     !! (artifactsDir </> "*.nupkg")
-    |> AppVeyor.PushArtifacts
+    |> Seq.iter (Trace.publish ImportData.BuildArtifact)
 }
 
 let publishNuget = task "PublishNuget" [ nuget ] {
     let key =
-        match environVarOrNone "nuget-key" with
+        match Environment.environVarOrNone "nuget-key" with
         | Some(key) -> key
-        | None -> getUserPassword "NuGet key: "
+        | None -> UserInput.getUserPassword "NuGet key: "
 
-    Paket.Push <| fun p ->  { p with WorkingDir = artifactsDir; ApiKey = key }
+    Fake.DotNet.Paket.push <| fun p ->  { p with WorkingDir = artifactsDir; ApiKey = key }
 }
 
 // --------------------------------------------------------------------------------------
@@ -204,8 +204,8 @@ let gitRelease = task "GitRelease" [] {
         |> Seq.tryFind (fun (s: string) -> s.Contains(gitOwner + "/" + gitName))
         |> function None -> gitHome + "/" + gitName | Some (s: string) -> s.Split().[0]
 
-    Git.Staging.StageAll ""
-    Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
+    Git.Staging.stageAll ""
+    Git.Commit.exec "" (sprintf "Bump version to %s" release.NugetVersion)
     Git.Branches.pushBranch "" remote (Git.Information.getBranchName "")
 
     Git.Branches.tag "" release.NugetVersion
@@ -214,13 +214,13 @@ let gitRelease = task "GitRelease" [] {
 
 let githubRelease = task "GitHubRelease" [ zip ] {
     let user =
-        match getBuildParam "github-user" with
-        | s when not (String.IsNullOrWhiteSpace s) -> s
-        | _ -> getUserInput "GitHub Username: "
+        match Environment.environVarOrNone "github-user" with
+        | Some s -> s
+        | _ -> UserInput.getUserInput "GitHub Username: "
     let pw =
-        match getBuildParam "github-pw" with
-        | s when not (String.IsNullOrWhiteSpace s) -> s
-        | _ -> getUserPassword "GitHub Password or Token: "
+        match Environment.environVarOrNone "github-pw" with
+        | Some s -> s
+        | _ -> UserInput.getUserPassword "GitHub Password or Token: "
 
     // release on github
     Octokit.createClient user pw
