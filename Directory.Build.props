@@ -3,7 +3,6 @@
     <RepositoryRootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)/..'))</RepositoryRootDir>
     <ArtifactsDir>$(RepositoryRootDir)/artifacts</ArtifactsDir>
     <OutputPath>$(ArtifactsDir)/$(MSBuildProjectName)/bin/$(Configuration)</OutputPath>
-    <BaseIntermediateOutputPath>$(ArtifactsDir)/$(MSBuildProjectName)/obj/$(Configuration)</BaseIntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup>
     <Description>Strongly Typed ID type Generator</Description>

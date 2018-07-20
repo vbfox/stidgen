@@ -2,7 +2,7 @@ version 5.174.5
 
 source https://api.nuget.org/v3/index.json
 
-framework: >= net451
+framework: >= net451, netcoreapp2.0
 
 redirects: off
 
@@ -17,7 +17,21 @@ nuget Expecto ~> 8.2
 nuget NFluent ~> 2.3
 
 // Build infrastructure
-nuget FAKE
+
+nuget Fake.Core.Target
+nuget Fake.Core.Environment
+nuget Fake.Core.Process
+nuget Fake.Core.Trace
+nuget Fake.Core.ReleaseNotes
+nuget Fake.Core.UserInput
+nuget Fake.IO.Zip
+nuget Fake.Tools.Git
+nuget Fake.DotNet.AssemblyInfoFile
+nuget Fake.DotNet.Testing.Expecto
+nuget Fake.DotNet.MsBuild
+nuget Fake.DotNet.Paket
+nuget Fake.BuildServer.AppVeyor
+
 nuget SourceLink.Fake ~> 1.1
 github fsharp/FAKE modules/Octokit/Octokit.fsx
 nuget ILRepack

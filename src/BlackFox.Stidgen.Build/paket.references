@@ -1,0 +1,18 @@
+FSharp.Core
+
+Fake.Core.Environment
+Fake.Core.Process
+Fake.Core.Trace
+Fake.Core.Target
+Fake.Core.ReleaseNotes
+Fake.Core.UserInput
+Fake.IO.Zip
+Fake.Tools.Git
+Fake.DotNet.AssemblyInfoFile
+Fake.DotNet.Testing.Expecto 
+Fake.DotNet.MsBuild
+Fake.DotNet.Paket
+Fake.BuildServer.AppVeyor
+
+File: CommandLine.fs
+

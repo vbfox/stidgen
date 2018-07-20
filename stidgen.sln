@@ -14,9 +14,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Settings.FSharpLint = Settings.FSharpLint
 	EndProjectSection
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "BlackFox.Stidgen", "src\BlackFox.Stidgen\BlackFox.Stidgen.fsproj", "{0A78F77F-6316-406D-9A1E-DA3DFE87443B}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BlackFox.Stidgen", "src\BlackFox.Stidgen\BlackFox.Stidgen.fsproj", "{0A78F77F-6316-406D-9A1E-DA3DFE87443B}"
 EndProject
-Project("{f2a71f9b-5d33-465a-a702-920d77279786}") = "BlackFox.Stidgen.Tests", "tests\BlackFox.Stidgen.Tests\BlackFox.Stidgen.Tests.fsproj", "{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BlackFox.Stidgen.Tests", "tests\BlackFox.Stidgen.Tests\BlackFox.Stidgen.Tests.fsproj", "{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "BlackFox.Stidgen.Build", "src\BlackFox.Stidgen.Build\BlackFox.Stidgen.Build.fsproj", "{F14EAC6C-3522-4AC2-BC69-01A978FDC388}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,8 +34,15 @@ Global
 		{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{92AE98C3-4735-4E39-A0F7-58A8FD7C7D5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F14EAC6C-3522-4AC2-BC69-01A978FDC388}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F14EAC6C-3522-4AC2-BC69-01A978FDC388}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F14EAC6C-3522-4AC2-BC69-01A978FDC388}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F14EAC6C-3522-4AC2-BC69-01A978FDC388}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2D1E9F2D-FEA4-4846-8CEC-79E81F0E4F09}
 	EndGlobalSection
 EndGlobal

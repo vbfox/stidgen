@@ -1,1 +1,0 @@
-E:\Code\_build\il-repack\ILRepack\bin\Debug\ILRepack.exe /wildcards /out:merged.exe artifacts\bin\BlackFox.Stidgen\Debug\stidgen.exe artifacts\bin\BlackFox.Stidgen\Debug\*.dll
