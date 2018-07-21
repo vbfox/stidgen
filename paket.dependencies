@@ -2,8 +2,8 @@ version 5.174.5
 
 source https://api.nuget.org/v3/index.json
 
-framework: >= net451
-
+framework: netcoreapp2.0
+storage: none
 redirects: off
 
 // Code

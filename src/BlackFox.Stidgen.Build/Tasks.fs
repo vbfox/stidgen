@@ -13,6 +13,7 @@ open Fake.BuildServer
 
 open BlackFox
 open BlackFox.TypedTaskDefinitionHelper
+open BlackFox.CommandLine
 
 let createAndGetDefault () =
     let configuration = "Release"
@@ -24,7 +25,10 @@ let createAndGetDefault () =
     let summary = "Strongly Typed ID type Generator"
     let solutionFile  = rootDir </> project + ".sln"
     let testAssemblies = artifactsDir </> "bin" </> "*.Tests" </> configuration </> "*.Tests.exe"
-    let sourceProjects = rootDir </> "src/**/*.??proj"
+    let sourceProjects =
+        !! (rootDir </> "src/**/*.??proj")
+        ++ (rootDir </> "tests/**/*.??proj")
+        -- (rootDir </> "src/BlackFox.Stidgen.Build/*")
 
     /// The profile where the project is posted
     let gitOwner = "vbfox"
@@ -67,9 +71,16 @@ let createAndGetDefault () =
     let clean = task "Clean" [] {
         Shell.cleanDir artifactsDir
 
-        !! solutionFile
-        |> MSBuild.runRelease id "" "Clean"
-        |> ignore
+        for project in sourceProjects do
+            let cmdLine =
+                CmdLine.empty
+                |> CmdLine.append project
+                |> CmdLine.append "--configuration"
+                |> CmdLine.append configuration
+                |> CmdLine.toString
+
+            DotNet.exec (fun opt -> { opt with WorkingDirectory = rootDir }) "clean" cmdLine
+            |> ignore
     }
 
     // Generate assembly info files with the right version & up-to-date information
@@ -91,7 +102,7 @@ let createAndGetDefault () =
               (getAssemblyInfoAttributes projectName)
             )
 
-        !! sourceProjects
+        sourceProjects
         |> Seq.map getProjectDetails
         |> Seq.iter (fun (_projFileName, _projectName, folderName, attributes) ->
             AssemblyInfoFile.createFSharp (folderName </> "AssemblyInfo.fs") attributes
@@ -102,9 +113,8 @@ let createAndGetDefault () =
     // Build library & test project
 
     let build = task "Build" [ assemblyInfo ] {
-        !! solutionFile
-        |> MSBuild.runRelease id "" "Rebuild"
-        |> ignore
+        DotNet.build (fun opt -> opt) solutionFile
+        
     }
 
     // --------------------------------------------------------------------------------------
