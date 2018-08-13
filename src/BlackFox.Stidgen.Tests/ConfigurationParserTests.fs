@@ -138,7 +138,6 @@ let tests = [
             "short", "System.Int16"
             "ushort", "System.UInt16"
             "string", "System.String"
-            "System.Collections.ArrayList", "System.Collections.ArrayList"
             "Guid", "System.Guid"
         ]
         (fun (name, expectedType) -> 

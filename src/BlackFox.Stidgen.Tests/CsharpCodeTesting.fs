@@ -11,6 +11,12 @@ type CompilationFailedException(message:string) = inherit Exception(message)
 
 let private metadataRef<'t> = MetadataReference.CreateFromFile(typeof<'t>.Assembly.Location)
 
+let private netstandardReference =
+    MetadataReference.CreateFromFile(Assembly.Load("netstandard, Version=2.0.0.0").Location)
+
+let private runtimeReference =
+    MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location)
+
 let private createCompilation (code:string seq) =
     let syntaxTrees = code |> Seq.map(fun c -> CSharpSyntaxTree.ParseText(c))
 
@@ -18,6 +24,8 @@ let private createCompilation (code:string seq) =
     
     let (references : MetadataReference[]) =
         [|
+            netstandardReference
+            runtimeReference
             metadataRef<obj>
             metadataRef<System.Linq.Enumerable>
             metadataRef<System.CodeDom.Compiler.GeneratedCodeAttribute>

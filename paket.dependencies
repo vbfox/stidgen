@@ -1,8 +1,8 @@
 version 5.174.5
 
 source https://api.nuget.org/v3/index.json
-
-framework: >= net451
+storage: none
+framework: netcoreapp2.0
 
 redirects: off
 
@@ -10,7 +10,7 @@ redirects: off
 nuget FSharp.Core ~> 4
 nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 2.8
 nuget FParsec
-nuget BlackFox.ColoredPrintf ~> 0.1
+nuget BlackFox.ColoredPrintf ~> 1.0
 
 // Unit tests
 nuget Expecto ~> 8.2
