@@ -45,8 +45,6 @@ let createAndGetDefault () =
     let gitHome = "https://github.com/" + gitOwner
     let gitName = "stidgen"
 
-    
-
     let inline versionPartOrZero x = if x < 0 then 0 else x
 
     let release =
@@ -98,7 +96,7 @@ let createAndGetDefault () =
     }
 
     let runTests = task "RunTests" [build] {
-        [artifactsDir </> testProjectName </> configuration </> "netcoreapp2.0" </> (testProjectName + ".dll")]
+        [artifactsDir </> testProjectName </> "bin" </> configuration </> "net461" </> (testProjectName + ".dll")]
             |> ExpectoDotNetCli.run (fun p ->
                 { p with
                     PrintVersion = false

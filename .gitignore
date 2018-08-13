@@ -209,3 +209,4 @@ FakesAssemblies/
 # Paket bug
 FSharp.Core.optdata
 FSharp.Core.sigdata
+.idea/

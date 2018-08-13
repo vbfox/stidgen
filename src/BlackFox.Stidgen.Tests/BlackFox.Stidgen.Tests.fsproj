@@ -10,7 +10,6 @@
     <ProjectReference Include="../../src/BlackFox.Stidgen/BlackFox.Stidgen.fsproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
     <Content Include="App.config" />
     <None Include="paket.references" />
     <Compile Include="ExpectoUtils.fs" />
