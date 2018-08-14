@@ -15,28 +15,19 @@ open BlackFox.TypedTaskDefinitionHelper
 open System.Xml.Linq
 
 let createAndGetDefault () =
-    let configuration = Environment.environVarOrDefault "configuration" "Release"
-    let fakeConfiguration =
-        match configuration.Trim().ToLowerInvariant() with
-        | "release" -> DotNet.BuildConfiguration.Release
-        | "debug" -> DotNet.BuildConfiguration.Debug
-        | _ -> DotNet.BuildConfiguration.Custom configuration
-
-    let from s =
-        { LazyGlobbingPattern.BaseDirectory = s; Includes = []; Excludes = [] }
-        :> IGlobbingPattern
+    let configuration = DotNet.BuildConfiguration.fromEnvironVarOrDefault "configuration" DotNet.BuildConfiguration.Release
 
     let projectName = "BlackFox.Stidgen"
     let testProjectName = projectName + ".Tests"
     let rootDir = System.IO.Path.GetFullPath(__SOURCE_DIRECTORY__ </> ".." </> "..")
     let srcDir = rootDir </> "src"
     let artifactsDir = rootDir </> "artifacts"
-    let nupkgDir = artifactsDir </> projectName </> configuration
+    let nupkgDir = artifactsDir </> projectName </> (string configuration)
     let projectFile = srcDir </> projectName </> (projectName + ".fsproj")
-    let projectBinDir = artifactsDir </> projectName </> configuration
+    let projectBinDir = artifactsDir </> projectName </> (string configuration)
     let solutionFile = srcDir </> "stidgen.sln"
     let projects =
-        from srcDir
+        GlobbingPattern.createFrom srcDir
         ++ "**/*.*proj"
         -- "*.Build/*"
 
@@ -91,12 +82,12 @@ let createAndGetDefault () =
 
     let build = task "Build" [generateVersionInfo; clean.IfNeeded] {
         DotNet.build
-          (fun p -> { p with Configuration = fakeConfiguration })
+          (fun p -> { p with Configuration = configuration })
           solutionFile
     }
 
     let runTests = task "Test" [build] {
-        let baseTestDir = artifactsDir </> testProjectName </> configuration
+        let baseTestDir = artifactsDir </> testProjectName </> (string configuration)
         [
             baseTestDir </> "net461" </> (testProjectName + ".exe")
             baseTestDir </> "netcoreapp2.0" </> (testProjectName + ".dll")
@@ -110,7 +101,7 @@ let createAndGetDefault () =
 
     let nuget = task "NuGet" [build] {
         DotNet.pack
-            (fun p -> { p with Configuration = fakeConfiguration })
+            (fun p -> { p with Configuration = configuration })
             projectFile
         let nupkgFile =
             nupkgDir
@@ -132,7 +123,7 @@ let createAndGetDefault () =
 
     let zip = task "Zip" [build] {
         let comment = sprintf "%s v%s" projectName release.NugetVersion
-        from projectBinDir
+        GlobbingPattern.createFrom projectBinDir
             ++ "**/*.dll"
             ++ "**/*.xml"
             -- "**/FSharp.Core.*"
