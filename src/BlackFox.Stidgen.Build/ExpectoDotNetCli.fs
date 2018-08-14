@@ -5,63 +5,45 @@ open Fake.Core
 open Fake.DotNet.Testing
 open Fake.Testing.Common
 
-/// Execution mode for an expecto test assembly
-type ExpectoRunMode =
-    /// Auto-detect the execution mode from the assembly file extension
-    | Auto
-    /// Directly run the test assembly executable
-    | Direct
-    /// Run the test assembly via 'dotnet'
-    | DotNet
-
 type private ResolvedRunMode = | ResolvedDirect | ResolvedDotNet
 
-let private getRunMode (configured: ExpectoRunMode) (assembly: string) =
-    match configured with
-    | Auto ->
-        let ext = System.IO.Path.GetExtension(assembly).ToLowerInvariant()
-        match ext with
-        | ".dll" -> ResolvedDotNet
-        | ".exe" -> ResolvedDirect
-        | _ ->
-            failwithf "Unable to find a way to run expecto test executable with extension %s" ext
-    | Direct -> ResolvedDirect
-    | DotNet -> ResolvedDotNet
+let private getRunMode (assembly: string) =
+    match System.IO.Path.GetExtension(assembly).ToLowerInvariant() with
+    | ".dll" -> ResolvedDotNet
+    | ".exe" -> ResolvedDirect
+    | ext ->
+        failwithf "Unable to find a way to run expecto test executable with extension %s" ext
+
+let private runAssembly (expectoParams: Expecto.Params) testAssembly =
+    let fakeStartInfo  =
+        let runMode = getRunMode testAssembly
+        let workingDir =
+            if String.isNotNullOrEmpty expectoParams.WorkingDirectory
+            then expectoParams.WorkingDirectory else Fake.IO.Path.getDirectory testAssembly
+        let fileName, argsString =
+            match runMode with
+            | ResolvedDotNet ->
+                "dotnet", sprintf "\"%s\" %O" testAssembly expectoParams
+            | ResolvedDirect ->
+                testAssembly, string expectoParams
+        (fun (info: ProcStartInfo) ->
+            { info with
+                FileName = fileName
+                Arguments = argsString
+                WorkingDirectory = workingDir } )
+
+    let exitCode = Process.execSimple fakeStartInfo TimeSpan.MaxValue
+    testAssembly, exitCode
 
 let run (setParams : Expecto.Params -> Expecto.Params) (assemblies : string seq) =
     let details = assemblies |> String.separated ", "
     use __ = Trace.traceTask "Expecto" details
 
-    let runAssembly testAssembly =
-        let exitCode =
-            let fakeStartInfo testAssembly (args: Expecto.Params) =
-                let runMode = getRunMode Auto testAssembly
-                let workingDir =
-                    if String.isNotNullOrEmpty args.WorkingDirectory
-                    then args.WorkingDirectory else Fake.IO.Path.getDirectory testAssembly
-                let fileName, argsString =
-                    match runMode with
-                    | ResolvedDotNet ->
-                        "dotnet", sprintf "\"%s\" %O" testAssembly args
-                    | ResolvedDirect ->
-                        testAssembly, string args
-                (fun (info: ProcStartInfo) ->
-                    { info with
-                        FileName = fileName
-                        Arguments = argsString
-                        WorkingDirectory = workingDir } )
-
-            let execWithExitCode testAssembly argsString timeout =
-                Process.execSimple (fakeStartInfo testAssembly argsString) timeout
-
-            let p = setParams Expecto.Params.DefaultParams
-            execWithExitCode testAssembly p TimeSpan.MaxValue
-
-        testAssembly, exitCode
+    let expectoParams = setParams Expecto.Params.DefaultParams
 
     let res =
         assemblies
-        |> Seq.map runAssembly
+        |> Seq.map (runAssembly expectoParams)
         |> Seq.filter( snd >> (<>) 0)
         |> Seq.toList
 
