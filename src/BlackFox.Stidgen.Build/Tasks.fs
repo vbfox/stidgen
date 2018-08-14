@@ -96,7 +96,7 @@ let createAndGetDefault () =
     }
 
     let runTests = task "RunTests" [build] {
-        [artifactsDir </> testProjectName </> "bin" </> configuration </> "netcoreapp2.0" </> (testProjectName + ".dll")]
+        [artifactsDir </> testProjectName </> configuration </> "netcoreapp2.0" </> (testProjectName + ".dll")]
             |> ExpectoDotNetCli.run (fun p ->
                 { p with
                     PrintVersion = false

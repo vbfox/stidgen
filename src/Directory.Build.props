@@ -1,9 +1,9 @@
 <Project>
   <PropertyGroup>
-    <RepositoryRootDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)/..'))</RepositoryRootDir>
-    <ArtifactsDir>$(RepositoryRootDir)/artifacts</ArtifactsDir>
-    <OutputPath>$(ArtifactsDir)/$(MSBuildProjectName)/bin/$(Configuration)</OutputPath>
-    <BaseIntermediateOutputPath>$(ArtifactsDir)/$(MSBuildProjectName)/obj/$(Configuration)</BaseIntermediateOutputPath>
+    <ArtifactsDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)/../artifacts/'))</ArtifactsDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'BlackFox.Stidgen.Build'">
+    <OutputPath>$([System.IO.Path]::GetFullPath('$(ArtifactsDir)/$(MSBuildProjectName)/$(Configuration)/'))</OutputPath>
   </PropertyGroup>
   <PropertyGroup>
     <Description>Strongly Typed ID type Generator</Description>
