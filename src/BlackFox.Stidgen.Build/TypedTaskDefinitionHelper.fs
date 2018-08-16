@@ -1,6 +1,6 @@
 ﻿/// Allow to define FAKE tasks with a syntax similar to Gulp tasks
-/// From https://gist.github.com/vbfox/e3e22d9ffff9b9de7f51
-module BlackFox.TypedTaskDefinitionHelper
+[<RequireQualifiedAccess>]
+module BlackFox.Fake.BuildTask
 
 open Fake.Core
 open Fake.Core.TargetOperators
@@ -8,45 +8,45 @@ open System
 
 /// What FAKE name a target
 type TaskMetadata = {
-    name: string
-    dependencies: TaskInfo list
+    Name: string
+    Dependencies: TaskInfo list
 }
 /// Dependency (Soft or Hard) to a target (That can be a null object)
 and TaskInfo = {
-    metadata: TaskMetadata option
-    isSoft: bool
+    Metadata: TaskMetadata option
+    IsSoft: bool
 }
 with
     static member NoTask =
-        { metadata = None; isSoft = false }
+        { Metadata = None; IsSoft = false }
 
     member this.Always
-        with get() = { this with isSoft = false }
+        with get() = { this with IsSoft = false }
 
     member this.IfNeeded
-        with get() = { this with isSoft = true }
+        with get() = { this with IsSoft = true }
 
     member this.If(condition: bool) =
         if condition then this else TaskInfo.NoTask
 
 /// Register dependencies of the passed Task in FAKE
 let inline private applyTaskDependecies meta =
-    for dependency in meta.dependencies do
-        match dependency.metadata with
+    for dependency in meta.Dependencies do
+        match dependency.Metadata with
         | Some dependencyMetadata ->
-            if dependency.isSoft then
-                dependencyMetadata.name ?=> meta.name |> ignore
+            if dependency.IsSoft then
+                dependencyMetadata.Name ?=> meta.Name |> ignore
             else
-                dependencyMetadata.name ==> meta.name |> ignore
+                dependencyMetadata.Name ==> meta.Name |> ignore
         | None -> ()
 
 /// Register the Task for FAKE with all it's dependencies
 let inline private registerTask meta body =
-    Target.create meta.name body
+    Target.create meta.Name body
     applyTaskDependecies meta
 
 let inline private infoFromMeta meta =
-    { metadata = Some meta; isSoft = false }
+    { Metadata = Some meta; IsSoft = false }
 
 type TaskBuilder(metadata: TaskMetadata) =
     member __.TryFinally(f, compensation) =
@@ -75,25 +75,47 @@ type TaskBuilder(metadata: TaskMetadata) =
         infoFromMeta metadata
 
 /// Define a Task with it's dependencies
-let Task name dependencies body =
-    let metadata = {name = name; dependencies = dependencies }
+let createFn name dependencies body =
+    let metadata = {Name = name; Dependencies = dependencies }
     registerTask metadata body
     infoFromMeta metadata
 
 /// Define a Task with it's dependencies
-let task name dependencies =
-    let metadata = {name = name; dependencies = dependencies }
+let create (name: string) (dependencies: TaskInfo list) =
+    let metadata = {Name = name; Dependencies = dependencies }
     TaskBuilder(metadata)
 
 /// Define a Task without any body, only dependencies
-let EmptyTask name dependencies =
-    let metadata = {name = name; dependencies = dependencies }
-    registerTask metadata (fun _ -> ())
+let createEmpty (name: string) (dependencies: TaskInfo list) =
+    let metadata = {Name = name; Dependencies = dependencies }
+    registerTask metadata ignore
     infoFromMeta metadata
 
 /// Run the task specified on the command line if there was one or the
 /// default one otherwise.
-let RunTaskOrDefault (taskInfo: TaskInfo) =
-    match taskInfo.metadata with
-    | Some metadata -> Target.runOrDefault metadata.name
+let runOrDefault (defaultTask: TaskInfo) =
+    match defaultTask.Metadata with
+    | Some metadata -> Target.runOrDefault metadata.Name
     | None -> failwith "No default task specified."
+
+/// Run the task specified on the command line if there was one or the
+/// default one otherwise.
+let runOrDefaultWithArguments (defaultTask: TaskInfo) =
+    match defaultTask.Metadata with
+    | Some metadata -> Target.runOrDefaultWithArguments metadata.Name
+    | None -> failwith "No default task specified."
+
+/// Runs the task given by the target parameter or lists the available targets
+let runOrList () =
+    Target.runOrList ()
+
+/// List all tasks available.
+let listAvailable () =
+    Target.listAvailable ()
+
+let printDependencyGraph (verbose: bool) (taskInfo: TaskInfo) =
+    match taskInfo.Metadata with
+    | Some metadata ->
+        Target.printDependencyGraph verbose metadata.Name
+    | None ->
+        failwith "No default task specified."

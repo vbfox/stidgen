@@ -11,7 +11,7 @@ open Fake.IO.FileSystemOperators
 open Fake.Tools
 
 open BlackFox
-open BlackFox.TypedTaskDefinitionHelper
+open BlackFox.Fake
 open System.Xml.Linq
 
 let createAndGetDefault () =
@@ -66,27 +66,27 @@ let createAndGetDefault () =
         let path = artifactsDir </> "Version.props"
         System.IO.File.WriteAllText(path, doc.ToString())
 
-    let init = task "Init" [] {
+    let init = BuildTask.create "Init" [] {
         Directory.create artifactsDir
     }
 
-    let clean = task "Clean" [init] {
+    let clean = BuildTask.create "Clean" [init] {
         let objDirs = projects |> Seq.map(fun p -> System.IO.Path.GetDirectoryName(p) </> "obj") |> List.ofSeq
         Shell.cleanDirs (artifactsDir :: objDirs)
     }
 
-    let generateVersionInfo = task "GenerateVersionInfo" [init; clean.IfNeeded] {
+    let generateVersionInfo = BuildTask.create "GenerateVersionInfo" [init; clean.IfNeeded] {
         writeVersionProps ()
         AssemblyInfoFile.createFSharp (artifactsDir </> "Version.fs") [AssemblyInfo.Version release.AssemblyVersion]
     }
 
-    let build = task "Build" [generateVersionInfo; clean.IfNeeded] {
+    let build = BuildTask.create "Build" [generateVersionInfo; clean.IfNeeded] {
         DotNet.build
           (fun p -> { p with Configuration = configuration })
           solutionFile
     }
 
-    let runTests = task "Test" [build] {
+    let runTests = BuildTask.create "Test" [build] {
         let baseTestDir = artifactsDir </> testProjectName </> (string configuration)
         [
             baseTestDir </> "net461" </> (testProjectName + ".exe")
@@ -99,7 +99,7 @@ let createAndGetDefault () =
                 })
     }
 
-    let nuget = task "NuGet" [build] {
+    let nuget = BuildTask.create "NuGet" [build] {
         DotNet.pack
             (fun p -> { p with Configuration = configuration })
             projectFile
@@ -110,7 +110,7 @@ let createAndGetDefault () =
         Trace.publish ImportData.BuildArtifact nupkgFile
     }
 
-    let publishNuget = task "PublishNuget" [nuget] {
+    let publishNuget = BuildTask.create "PublishNuget" [nuget] {
         let key =
             match Environment.environVarOrNone "nuget-key" with
             | Some(key) -> key
@@ -121,7 +121,7 @@ let createAndGetDefault () =
 
     let zipFile = artifactsDir </> (sprintf "%s-%s.zip" projectName release.NugetVersion)
 
-    let zip = task "Zip" [build] {
+    let zip = BuildTask.create "Zip" [build] {
         let comment = sprintf "%s v%s" projectName release.NugetVersion
         GlobbingPattern.createFrom projectBinDir
             ++ "**/*.dll"
@@ -132,7 +132,7 @@ let createAndGetDefault () =
         Trace.publish ImportData.BuildArtifact zipFile
     }
 
-    let gitHubRelease = task "GitHubRelease" [zip] {
+    let gitHubRelease = BuildTask.create "GitHubRelease" [zip] {
         let user =
             match Environment.environVarOrNone "github-user" with
             | Some s -> s
@@ -155,7 +155,7 @@ let createAndGetDefault () =
         |> Async.RunSynchronously
     }
 
-    let gitRelease = task "GitRelease" [] {
+    let gitRelease = BuildTask.create "GitRelease" [] {
         let remote =
             Git.CommandHelper.getGitResult "" "remote -v"
             |> Seq.filter (fun (s: string) -> s.EndsWith("(push)"))
@@ -166,7 +166,7 @@ let createAndGetDefault () =
         Git.Branches.pushTag "" remote release.NugetVersion
     }
 
-    let _releaseTask = EmptyTask "Release" [clean; gitRelease; gitHubRelease; publishNuget]
-    let _ciTask = EmptyTask "CI" [clean; runTests; zip; nuget]
+    let _releaseTask = BuildTask.createEmpty "Release" [clean; gitRelease; gitHubRelease; publishNuget]
+    let _ciTask = BuildTask.createEmpty "CI" [clean; runTests; zip; nuget]
 
-    EmptyTask "Default" [runTests]
+    BuildTask.createEmpty "Default" [runTests]
