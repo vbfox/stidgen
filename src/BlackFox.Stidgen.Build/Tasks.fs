@@ -13,6 +13,7 @@ open Fake.Tools
 open BlackFox
 open BlackFox.Fake
 open System.Xml.Linq
+open Fake.DotNet.Testing
 
 let createAndGetDefault () =
     let configuration = DotNet.BuildConfiguration.fromEnvironVarOrDefault "configuration" DotNet.BuildConfiguration.Release
@@ -92,7 +93,7 @@ let createAndGetDefault () =
             baseTestDir </> "net461" </> (testProjectName + ".exe")
             baseTestDir </> "netcoreapp2.0" </> (testProjectName + ".dll")
         ]
-            |> ExpectoDotNetCli.run (fun p ->
+            |> Expecto.run (fun p ->
                 { p with
                     PrintVersion = false
                     FailOnFocusedTests = true
