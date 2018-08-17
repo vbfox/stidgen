@@ -41,9 +41,10 @@ let private visibilityToKeyword = function
 
 module private SerializationAttributes =
     module private ProtobufNet =
-        let ifEnabled info arg f = if info.Id.ProtobufnetSerializable then f arg else arg
+        let ifEnabled info arg f =
+            if info.Id.ProtobufnetSerializable then f arg else arg
 
-        let addProtoMember info field =
+        let addProtoMember info (field: FieldDeclarationSyntax) =
             ifEnabled info field
                 <| addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1])
 
@@ -96,7 +97,8 @@ module private SerializationAttributes =
 let private makeValueField info =
     // Not marked as readonly for the potential perf gain
     // See https://codeblog.jonskeet.uk/2014/07/16/micro-optimization-the-surprising-inefficiency-of-readonly-fields/
-    field info.UnderlyingTypeSyntax info.FieldName
+    (field info.UnderlyingTypeSyntax info.FieldName)
+        
         |> addModifiers [| SyntaxKind.PrivateKeyword |]
         |> SerializationAttributes.addToField info
 

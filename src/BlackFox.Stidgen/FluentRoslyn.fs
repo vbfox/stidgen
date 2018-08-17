@@ -66,9 +66,28 @@ let inline addBaseTypes (types : TypeSyntax seq) (input:^T) =
     let baseTypes = types |> Seq.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax) |> Seq.toArray
     (^T : (member AddBaseListTypes : BaseTypeSyntax array -> ^T) (input, baseTypes))
 
-let inline addModifiers syntaxKinds (input:^T) =
+let addModifiers'<'t when 't :> CSharpSyntaxNode> modifiers (input: 't): 't =
+    match box input with
+    | :? EnumDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? TypeDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? DelegateDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? FieldDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? EventFieldDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? ConstructorDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? DestructorDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? PropertyDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? EventDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? IndexerDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? OperatorDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? ConversionOperatorDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? MethodDeclarationSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? IncompleteMemberSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | :? ParameterSyntax as input -> input.AddModifiers(modifiers) |> unbox
+    | _ -> failwithf "Not supported %s" (input.GetType().FullName)
+
+let inline addModifiers<'t when 't :> CSharpSyntaxNode> syntaxKinds (input: 't): 't =
     let tokens = syntaxKinds |> Seq.map (fun k -> SyntaxFactory.Token(k)) |> Seq.toArray
-    (^T : (member AddModifiers : SyntaxToken array -> ^T) (input, tokens))
+    addModifiers' tokens input
 
 let inline withSemicolon (input:^T) =
     let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
@@ -111,9 +130,48 @@ let inline withBody (statements: StatementSyntax seq) (input:^T) =
     let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
     (^T : (member WithBody : BlockSyntax -> ^T) (input, block))
 
-let inline addAttributeList (attributes:AttributeSyntax seq) (input:^T) =
+let getAttributes<'t when 't :> MemberDeclarationSyntax> (input: 't) =
+    match box input with
+    | :? EnumDeclarationSyntax as input -> input.AttributeLists
+    | :? EnumMemberDeclarationSyntax as input -> input.AttributeLists
+    | :? TypeDeclarationSyntax as input -> input.AttributeLists
+    | :? DelegateDeclarationSyntax as input -> input.AttributeLists
+    | :? FieldDeclarationSyntax as input -> input.AttributeLists
+    | :? EventFieldDeclarationSyntax as input -> input.AttributeLists
+    | :? ConstructorDeclarationSyntax as input -> input.AttributeLists
+    | :? DestructorDeclarationSyntax as input -> input.AttributeLists
+    | :? PropertyDeclarationSyntax as input -> input.AttributeLists
+    | :? EventDeclarationSyntax as input -> input.AttributeLists
+    | :? IndexerDeclarationSyntax as input -> input.AttributeLists
+    | :? OperatorDeclarationSyntax as input -> input.AttributeLists
+    | :? ConversionOperatorDeclarationSyntax as input -> input.AttributeLists
+    | :? MethodDeclarationSyntax as input -> input.AttributeLists
+    | :? IncompleteMemberSyntax as input -> input.AttributeLists
+    | _ -> SyntaxFactory.List<AttributeListSyntax>()
+
+let withAttributeList<'t when 't :> MemberDeclarationSyntax> (attributeLists: SyntaxList<AttributeListSyntax>) (input: 't): 't =
+    match box input with
+    | :? EnumDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? EnumMemberDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? TypeDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? DelegateDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? FieldDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? EventFieldDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? ConstructorDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? DestructorDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? PropertyDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? EventDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? IndexerDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? OperatorDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? ConversionOperatorDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? MethodDeclarationSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | :? IncompleteMemberSyntax as input -> input.WithAttributeLists(attributeLists) |> unbox
+    | _ -> failwithf "Not supported %s" (input.GetType().FullName)
+
+let addAttributeList attributes input =
     let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
-    (^T : (member AddAttributeLists : AttributeListSyntax[] -> ^T) (input, [|attributeList|]))
+    let existing = getAttributes input
+    withAttributeList (existing.Add(attributeList)) input
 
 let inline addAttribute attribute input =
     addAttributeList [attribute] input

@@ -29,7 +29,7 @@ let private normalizeFileName (s:string) =
         |> Array.ofSeq
     new String (newChars)
 
-let private makePath configurationPath (idType:IdType) =
+let private makePath (configurationPath: string) (idType:IdType) =
     let folder = Path.GetDirectoryName(configurationPath)
 
     let fileName = 
