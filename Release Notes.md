@@ -1,4 +1,4 @@
-### New in 1.1
+### New in 1.1.0
 
 * Make it a dotnet core tool
 * Optimize interned strings equality and `GetHashCode`.
@@ -6,7 +6,7 @@
   This can be dangerous if the type is extended and a new constructor is added that doesn't
   do interning but the performance gains in access to dictionary and hashtables are worth it.
 
-### New in 1.0
+### New in 1.0.0
 
 * Use FParsec to parse the configuration
 * Use BlackFox.ColoredPrintf instead of an internal solution

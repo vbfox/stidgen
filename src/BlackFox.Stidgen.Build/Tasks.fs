@@ -106,7 +106,7 @@ let createAndGetDefault () =
             projectFile
         let nupkgFile =
             nupkgDir
-                </> (sprintf "%s.%s.nupkg" projectName release.NugetVersion)
+                </> (sprintf "stidgen.%s.nupkg" release.NugetVersion)
 
         Trace.publish ImportData.BuildArtifact nupkgFile
     }
