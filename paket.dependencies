@@ -2,7 +2,7 @@ version 5.176.6
 
 source https://api.nuget.org/v3/index.json
 storage: none
-framework: netcoreapp2.1,net461
+framework: netcoreapp2.1
 
 redirects: off
 
@@ -22,7 +22,7 @@ nuget NFluent ~> 2.3
 group build
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: netcoreapp2.0
+    framework: netcoreapp2.1
 
     nuget FSharp.Core ~> 4
     nuget System.ValueTuple ~> 4.5
