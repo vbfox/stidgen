@@ -1,0 +1,14 @@
+# Try as much as possible to allow to use either the ID type
+# or string everywhere with implicit conversions
+
+public UserId<string>
+    AllowNull: true
+    CastToUnderlying: implicit
+    CastFromUnderlying: implicit
+    EqualsUnderlying: true
+
+public CompanyId<string>
+    AllowNull: true
+    CastToUnderlying: implicit
+    CastFromUnderlying: implicit
+    EqualsUnderlying: true

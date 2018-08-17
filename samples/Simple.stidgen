@@ -1,0 +1,6 @@
+# Very simple usage, support all base features
+# Cast to/from string is explicit and the type isn't considered "equal" to string
+
+public UserId<string>
+public CompanyId<string>
+public UploadedFileId<Guid>
