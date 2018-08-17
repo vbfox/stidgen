@@ -1,5 +1,6 @@
 ### New in 1.1
 
+* Make it a dotnet core tool
 * Optimize interned strings equality and `GetHashCode`.
 
   This can be dangerous if the type is extended and a new constructor is added that doesn't
