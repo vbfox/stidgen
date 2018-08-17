@@ -21,18 +21,18 @@ with
     member x.HasErrors () =
         x.Configuration.HasErrors()
 
-let private normalizeFileName (s:string) = 
+let private normalizeFileName (s:string) =
     let invalid = Path.GetInvalidFileNameChars()
-    let newChars = 
+    let newChars =
         s
         |> Seq.map (fun c -> if invalid |> Seq.exists ((=) c) then '_' else c)
         |> Array.ofSeq
     new String (newChars)
 
-let private makePath configurationPath (idType:IdType) =
+let private makePath (configurationPath: string) (idType:IdType) =
     let folder = Path.GetDirectoryName(configurationPath)
 
-    let fileName = 
+    let fileName =
         match (idType.UseNameAsFileName, idType.FileName) with
         | (_, Some(fileName)) -> fileName
         | (true, _) -> (idType.Name |> normalizeFileName) + ".Generated.cs"
@@ -58,7 +58,7 @@ let private getFilesAndContentAsync configurationPath (idTypes : IdType list) =
     |> Seq.map(generationForFile)
     |> Async.Parallel
 
-let writeCsharpFiles files = 
+let writeCsharpFiles files =
     for fileResult in files do
         File.WriteAllText(fileResult.FileName, fileResult.Text)
 
@@ -66,7 +66,7 @@ let writeCsharpFiles files =
 let generateToFiles configurationPath =
     let configurationInfo = new FileInfo(configurationPath)
     let configuration = ConfigurationParser.loadFromFile configurationInfo
-    
+
     match configuration.Result with
     | Failure _ ->
         {
@@ -80,7 +80,7 @@ let generateToFiles configurationPath =
                 getFilesAndContentAsync path types
                 |> Async.RunSynchronously
                 |> List.ofArray
-            let result = 
+            let result =
                 {
                     Configuration = configuration
                     Files = files
@@ -90,5 +90,5 @@ let generateToFiles configurationPath =
                 writeCsharpFiles result.Files
 
             result
-        
+
         | _ -> failwith "Unexpected"
