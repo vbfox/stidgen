@@ -26,6 +26,8 @@ And generate for each type specified a type that can be used as a strongly-typed
 * Other `IComparable<T>` implementations are lifted if `EqualsUnderlying` is set.
 * `string` IDs are interned by default.
 
+Examples of generated files can be found in the [sample folder](https://github.com/vbfox/stidgen/tree/master/samples).
+
 Installation
 ------------
 
