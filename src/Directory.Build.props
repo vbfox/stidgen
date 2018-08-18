@@ -17,6 +17,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);FS2003</WarningsNotAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(ArtifactsDir)/Version.fs"  Condition="exists('$(ArtifactsDir)/Version.fs')"/>
