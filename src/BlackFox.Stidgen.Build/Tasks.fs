@@ -90,7 +90,6 @@ let createAndGetDefault () =
     let runTests = BuildTask.create "Test" [build] {
         let baseTestDir = artifactsDir </> testProjectName </> (string configuration)
         [
-            baseTestDir </> "net461" </> (testProjectName + ".exe")
             baseTestDir </> "netcoreapp2.0" </> (testProjectName + ".dll")
         ]
             |> Expecto.run (fun p ->
