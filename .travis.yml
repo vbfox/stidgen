@@ -1,9 +1,9 @@
 language: csharp
-
 sudo: false  # use the new container-based Travis infrastructure
-
-script:
-  - ./build.sh CI
-
 mono:
   - latest
+dotnet: 2.1
+install:
+  - ./paket.sh restore
+script:
+  - ./build.sh CI
