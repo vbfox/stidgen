@@ -15,7 +15,8 @@ nuget FParsec
 nuget BlackFox.ColoredPrintf ~> 1.0
 
 // Unit tests
-nuget Expecto ~> 8.2
+nuget Expecto ~> 8.3
+nuget Expecto.TestResults
 nuget NFluent ~> 2.3
 
 // Build infrastructure
@@ -43,4 +44,5 @@ group build
     nuget Fake.DotNet.Paket
     nuget Fake.BuildServer.AppVeyor
     nuget Fake.BuildServer.Travis
+    nuget Fake.BuildServer.TeamFoundation
     nuget Fake.Api.GitHub

@@ -2,6 +2,4 @@
 
 ./paket.sh restore || { exit $?; }
 
-pushd src/BlackFox.Stidgen.Build/
-dotnet run $@
-popd
+dotnet run --project src/BlackFox.Stidgen.Build/BlackFox.Stidgen.Build.fsproj -- $@

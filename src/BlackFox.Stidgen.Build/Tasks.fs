@@ -37,25 +37,19 @@ let createAndGetDefault () =
     let gitHome = "https://github.com/" + gitOwner
     let gitName = "stidgen"
 
-    let inline versionPartOrZero x = if x < 0 then 0 else x
+    let getUnionCaseName (x:'a) =
+        match Microsoft.FSharp.Reflection.FSharpValue.GetUnionFields(x, typeof<'a>) with | case, _ -> case.Name
 
     let release =
         let fromFile = ReleaseNotes.load (rootDir </> "Release Notes.md")
         if BuildServer.buildServer <> BuildServer.LocalBuild then
-            let buildVersion = int BuildServer.buildVersion
-            let nugetVer = sprintf "%s-appveyor%04i" fromFile.NugetVersion buildVersion
-            let asmVer = System.Version.Parse(fromFile.AssemblyVersion)
-            let asmVer =
-                System.Version(
-                    versionPartOrZero asmVer.Major,
-                    versionPartOrZero asmVer.Minor,
-                    versionPartOrZero asmVer.Build,
-                    versionPartOrZero buildVersion)
-            ReleaseNotes.ReleaseNotes.New(asmVer.ToString(), nugetVer, fromFile.Date, fromFile.Notes)
+            let buildServerName = (getUnionCaseName BuildServer.buildServer).ToLowerInvariant()
+            let nugetVer = sprintf "%s-%s.%s" fromFile.NugetVersion buildServerName BuildServer.buildVersion
+            ReleaseNotes.ReleaseNotes.New(fromFile.AssemblyVersion, nugetVer, fromFile.Date, fromFile.Notes)
         else
             fromFile
 
-    Trace.setBuildNumber release.AssemblyVersion
+    Trace.setBuildNumber release.NugetVersion
 
     let writeVersionProps() =
         let doc =
@@ -88,15 +82,14 @@ let createAndGetDefault () =
     }
 
     let runTests = BuildTask.create "Test" [build] {
-        let baseTestDir = artifactsDir </> testProjectName </> (string configuration)
-        [
-            baseTestDir </> "netcoreapp2.1" </> (testProjectName + ".dll")
-        ]
+        let testsBinaryDir = artifactsDir </> testProjectName </> (string configuration) </> "netcoreapp2.1"
+        [ testsBinaryDir </> (testProjectName + ".dll") ]
             |> Expecto.run (fun p ->
                 { p with
                     PrintVersion = false
                     FailOnFocusedTests = true
                 })
+        Trace.publish (ImportData.Nunit NunitDataVersion.Nunit) (testsBinaryDir </> "TestResults.xml")
     }
 
     let nuget = BuildTask.create "NuGet" [build] {

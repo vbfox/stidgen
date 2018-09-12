@@ -3,3 +3,4 @@ Microsoft.CodeAnalysis.CSharp.Workspaces
 NFluent
 FParsec
 Expecto
+Expecto.TestResults
