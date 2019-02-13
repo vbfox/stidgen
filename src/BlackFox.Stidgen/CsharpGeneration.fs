@@ -609,7 +609,7 @@ module private NonGenericComparable =
 /// <returns>
 /// A value that indicates the relative order of the objects being compared.
 /// The return value has these meanings: Value Meaning Less than zero This
-/// instance precedes <paramref name=""other"" /> in the sort order.  Zero This
+/// instance precedes <paramref name=""other"" /> in the sort order. Zero This
 /// instance occurs in the same position in the sort order as
 /// <paramref name=""other"" />. Greater than zero This instance follows
 /// <paramref name=""other"" /> in the sort order.
