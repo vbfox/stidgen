@@ -2,12 +2,12 @@ version 5.176.6
 
 source https://api.nuget.org/v3/index.json
 storage: none
-framework: netcoreapp2.1
+framework: net5.0
 
 redirects: off
 
 // Code
-nuget FSharp.Core ~> 4
+nuget FSharp.Core ~> 5
 // 2.9 breaks SRTP
 // https://github.com/Microsoft/visualfsharp/issues/5531
 nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 2.8.2
@@ -23,9 +23,9 @@ nuget NFluent ~> 2.3
 group build
     source https://api.nuget.org/v3/index.json
     storage: none
-    framework: netcoreapp2.1
+    framework: net5.0
 
-    nuget FSharp.Core ~> 4
+    nuget FSharp.Core ~> 5
     nuget System.ValueTuple ~> 4.5
     nuget BlackFox.Fake.BuildTask
 
