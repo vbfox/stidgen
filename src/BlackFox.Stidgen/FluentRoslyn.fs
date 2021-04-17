@@ -62,62 +62,277 @@ let addUsings (usings : string seq) (compilationUnit : CompilationUnitSyntax) =
 
     compilationUnit.AddUsings(directives)
 
-let inline addBaseTypes (types : TypeSyntax seq) (input:^T) =
-    let baseTypes = types |> Seq.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax) |> Seq.toArray
-    (^T : (member AddBaseListTypes : BaseTypeSyntax array -> ^T) (input, baseTypes))
+type StructDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
 
-let inline addModifiers syntaxKinds (input:^T) =
-    let tokens = syntaxKinds |> Seq.map (fun k -> SyntaxFactory.Token(k)) |> Seq.toArray
-    (^T : (member AddModifiers : SyntaxToken array -> ^T) (input, tokens))
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
 
-let inline withSemicolon (input:^T) =
-    let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
-    (^T : (member WithSemicolonToken : SyntaxToken -> ^T) (input, token))
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
 
-let inline addParameters' parameters (input:^T) =
-    (^T : (member AddParameterListParameters : ParameterSyntax array -> ^T) (input, parameters |> Seq.toArray))
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
 
-let inline addParameter' name parameterType modifiers input =
-    let parameter =
-        SyntaxFactory.Parameter(SyntaxFactory.Identifier(name)).WithType(parameterType)
-        |> addModifiers modifiers
+    member this.addMembers members =
+        this.AddMembers(members |> Seq.toArray)
 
-    input |> addParameters' [parameter]
+    member this.addMember member'=
+        this.AddMembers([|member'|])
 
-let inline addParameter name parameterType = addParameter' name parameterType []
-let inline addOutParameter name parameterType = addParameter' name parameterType [SyntaxKind.OutKeyword]
-let inline addRefParameter name parameterType = addParameter' name parameterType [SyntaxKind.RefKeyword]
+    member this.addBaseTypes (types : TypeSyntax seq) =
+        let baseTypes = types |> Seq.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax) |> Seq.toArray
+        this.AddBaseListTypes(baseTypes)
 
-let inline addArgument expression (input:^T) =
-    let argument = SyntaxFactory.Argument(expression)
-    (^T : (member AddArgumentListArguments : ArgumentSyntax array -> ^T) (input, [|argument|]))
+type ClassDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
 
-let inline addBodyStatements statements (input:^T) =
-    (^T : (member AddBodyStatements : StatementSyntax array -> ^T) (input, statements))
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
 
-let inline addBodyStatement statement input =
-    input |> addBodyStatements [|statement|] 
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
 
-let inline addMembers members (input:^T) =
-    (^T : (member AddMembers : MemberDeclarationSyntax array -> ^T) (input, members |> Seq.toArray))
-   
-let inline addMember member' (input:^T) =
-    (^T : (member AddMembers : MemberDeclarationSyntax array -> ^T) (input, [|member'|]))
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+    member this.addMembers members =
+        this.AddMembers(members |> Seq.toArray)
+
+    member this.addMember member'=
+        this.AddMembers([|member'|])
+
+    member this.addBaseTypes (types : TypeSyntax seq) =
+        let baseTypes = types |> Seq.map (fun t -> SyntaxFactory.SimpleBaseType(t) :> BaseTypeSyntax) |> Seq.toArray
+        this.AddBaseListTypes(baseTypes)
+
+type FieldDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
+
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
+
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
+
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+type PropertyDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
+
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
+
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
+
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+type ParameterSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
+
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
+
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
+
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+type MethodDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
+
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
+
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
+
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+    member this.withSemicolon =
+        let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
+        this.WithSemicolonToken(token)
+
+    member this.addParameters' parameters =
+        this.AddParameterListParameters(parameters |> Seq.toArray)
+
+    member this.addParameter' name parameterType modifiers =
+        let parameter =
+            SyntaxFactory.Parameter(SyntaxFactory.Identifier(name))
+                .WithType(parameterType)
+                .addModifiers(modifiers)
+
+        this.addParameters' [parameter]
+
+    member this.addParameter name parameterType = this.addParameter' name parameterType []
+    member this.addOutParameter name parameterType = this.addParameter' name parameterType [SyntaxKind.OutKeyword]
+    member this.addRefParameter name parameterType = this.addParameter' name parameterType [SyntaxKind.RefKeyword]
+
+    member this.addBodyStatement statement =
+        this.AddBodyStatements([|statement|])
+
+    member this.withBody (statements: StatementSyntax seq) =
+        let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
+        this.WithBody(block)
+
+type OperatorDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
+
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
+
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
+
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+    member this.withSemicolon =
+        let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
+        this.WithSemicolonToken(token)
+
+    member this.addParameters' parameters =
+        this.AddParameterListParameters(parameters |> Seq.toArray)
+
+    member this.addParameter' name parameterType modifiers =
+        let parameter =
+            SyntaxFactory.Parameter(SyntaxFactory.Identifier(name))
+                .WithType(parameterType)
+                .addModifiers(modifiers)
+
+        this.addParameters' [parameter]
+
+    member this.addParameter name parameterType = this.addParameter' name parameterType []
+    member this.addOutParameter name parameterType = this.addParameter' name parameterType [SyntaxKind.OutKeyword]
+    member this.addRefParameter name parameterType = this.addParameter' name parameterType [SyntaxKind.RefKeyword]
+
+    member this.addBodyStatement statement =
+        this.AddBodyStatements([|statement|])
+
+    member this.withBody (statements: StatementSyntax seq) =
+        let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
+        this.WithBody(block)
+
+type ConversionOperatorDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
+
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
+
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
+
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+    member this.withSemicolon =
+        let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
+        this.WithSemicolonToken(token)
+
+    member this.addParameters' parameters =
+        this.AddParameterListParameters(parameters |> Seq.toArray)
+
+    member this.addParameter' name parameterType modifiers =
+        let parameter =
+            SyntaxFactory.Parameter(SyntaxFactory.Identifier(name))
+                .WithType(parameterType)
+                .addModifiers(modifiers)
+
+        this.addParameters' [parameter]
+
+    member this.addParameter name parameterType = this.addParameter' name parameterType []
+    member this.addOutParameter name parameterType = this.addParameter' name parameterType [SyntaxKind.OutKeyword]
+    member this.addRefParameter name parameterType = this.addParameter' name parameterType [SyntaxKind.RefKeyword]
+
+    member this.addBodyStatement statement =
+        this.AddBodyStatements([|statement|])
+
+    member this.withBody (statements: StatementSyntax seq) =
+        let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
+        this.WithBody(block)
+
+type ConstructorDeclarationSyntax with
+    member this.addModifiers(syntaxKinds) =
+        let tokens = syntaxKinds |> Seq.map SyntaxFactory.Token |> Seq.toArray
+        this.AddModifiers(tokens)
+
+    member this.addAttributeList(attributes:AttributeSyntax seq) =
+        let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
+        this.AddAttributeLists([|attributeList|])
+
+    member this.addAttribute(attribute) =
+        this.addAttributeList [attribute]
+
+    member this.addTriviaBefore(trivia) =
+        let newTrivia = Seq.concat [trivia; this.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
+        this.WithLeadingTrivia(newTrivia)
+
+    member this.withSemicolon() =
+        let token = SyntaxFactory.Token(SyntaxKind.SemicolonToken)
+        this.WithSemicolonToken(token)
+
+    member this.addParameters'(parameters) =
+        this.AddParameterListParameters(parameters |> Seq.toArray)
+
+    member this.addParameter'(name, parameterType, modifiers) =
+        let parameter =
+            SyntaxFactory.Parameter(SyntaxFactory.Identifier(name))
+                .WithType(parameterType)
+                .addModifiers(modifiers)
+
+        this.addParameters' [parameter]
+
+    member this.addParameter(name, parameterType) = this.addParameter'(name, parameterType, [])
+    member this.addOutParameter(name, parameterType) = this.addParameter'(name, parameterType, [SyntaxKind.OutKeyword])
+    member this.addRefParameter(name, parameterType) = this.addParameter'(name, parameterType, [SyntaxKind.RefKeyword])
+
+    member this.addBodyStatement statement =
+        this.AddBodyStatements([|statement|])
+
+    member this.withBody (statements: StatementSyntax seq) =
+        let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
+        this.WithBody(block)
 
 let inline addStatement statement (input:^T) =
     (^T : (member AddStatements : StatementSyntax array -> ^T) (input, [|statement|]))
 
-let inline withBody (statements: StatementSyntax seq) (input:^T) =
-    let block = SyntaxFactory.Block(SyntaxFactory.List<StatementSyntax>(statements))
-    (^T : (member WithBody : BlockSyntax -> ^T) (input, block))
-
-let inline addAttributeList (attributes:AttributeSyntax seq) (input:^T) =
-    let attributeList = SyntaxFactory.AttributeList(attributes |> toSeparatedList)
-    (^T : (member AddAttributeLists : AttributeListSyntax[] -> ^T) (input, [|attributeList|]))
-
-let inline addAttribute attribute input =
-    addAttributeList [attribute] input
-    
 let makeAttribute' name (args:AttributeArgumentSyntax list) = 
     // Special casing the empty list as null generate an attribute without empty parenthesis after it
     let finalArgs = if args.IsEmpty then null else SyntaxFactory.AttributeArgumentList(args |> toSeparatedList)
@@ -137,14 +352,6 @@ let makeSingleLineComments (s:string) =
 let addTriviaBefore (trivia : SyntaxTrivia seq) (node : #SyntaxNode) =
     let newTrivia = Seq.concat [trivia; node.GetLeadingTrivia() :> SyntaxTrivia seq] |> Seq.toArray
     node.WithLeadingTrivia(newTrivia)
-
-/// get;
-let addEmptyGetter (property:PropertyDeclarationSyntax) =
-    property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration) |> withSemicolon)
-
-/// set;
-let addEmptySetter (property:PropertyDeclarationSyntax) =
-    property.AddAccessorListAccessors(SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration) |> withSemicolon)
 
 /// get { body }
 let addGetter body (property:PropertyDeclarationSyntax) =
@@ -369,13 +576,12 @@ let typesyntaxof<'t> = NameSyntax.FromType(typeof<'t>) :> TypeSyntax
 /// if (argName == null) { throw new ArgumentNullException("argName"); }
 let throwIfArgumentNull argName =
     if'
-        (equals (identifier argName) (Literal.Null))
+        (equals (identifier argName) Literal.Null)
         (block [ throwException typesyntaxof<System.ArgumentNullException> [|Literal.String argName|] ])
 
 module FromReflection =
     open System.Reflection
-    open System
-    
+
     /// Create an ExpressionSyntax representing an access to a static method
     let staticMethodAccess (m:MethodInfo) =
         let declaringType = NameSyntax.FromType(m.DeclaringType)
@@ -392,23 +598,23 @@ module FromReflection =
     let getArgument (p:ParameterInfo) =
         let name = identifier p.Name
         match (p.IsOut, p.ParameterType.IsByRef) with
-        | (true, _) -> outArg name
-        | (false, true) -> refArg name
-        | (false, false) -> arg name
+        | true, _ -> outArg name
+        | false, true -> refArg name
+        | false, false -> arg name
 
     let getArgumentsForCall (m:MethodInfo) =
         m.GetParameters() |> Seq.map getArgument
 
     let getModifiers (p:ParameterInfo) =
         match (p.IsOut, p.ParameterType.IsByRef) with
-        | (true, _) -> [SyntaxKind.OutKeyword]
-        | (false, true) -> [SyntaxKind.RefKeyword]
-        | (false, false) -> []
+        | true, _ -> [SyntaxKind.OutKeyword]
+        | false, true -> [SyntaxKind.RefKeyword]
+        | false, false -> []
 
     let parameterInfoToParameter (p:ParameterInfo) = 
         SyntaxFactory.Parameter(SyntaxFactory.Identifier(p.Name))
             .WithType(NameSyntax.FromType(p.ParameterType))
-            |> addModifiers (getModifiers p)
+            .addModifiers(getModifiers p)
 
     let getParametersForDeclaration (m:MethodInfo) = 
         m.GetParameters() |> Seq.map(parameterInfoToParameter)

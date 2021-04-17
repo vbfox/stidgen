@@ -129,7 +129,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
                 return 0;
             else
                 return -1;
-        return this.value.CompareTo(other);
+        return value.CompareTo(other);
     }
 
     /// <summary>
@@ -155,7 +155,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
                 return 0;
             else
                 return -1;
-        return this.value.CompareTo(other.value);
+        return value.CompareTo(other.value);
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
@@ -166,7 +166,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
                 return 0;
             else
                 return -1;
-        return this.value.CompareTo(obj);
+        return value.CompareTo(obj);
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
@@ -188,7 +188,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
-    public static implicit operator UserId? (string x)
+    public static implicit operator UserId?(string x)
     {
         return x == null ? (UserId?)null : new UserId(x);
     }
@@ -201,7 +201,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
             return Convert.GetTypeCode(null);
         }
 
-        return this.value.GetTypeCode();
+        return value.GetTypeCode();
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
@@ -366,7 +366,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
             return Convert.ToString(null);
         }
 
-        return this.value.ToString(provider);
+        return value.ToString(provider);
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
@@ -502,7 +502,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
                 return 0;
             else
                 return -1;
-        return this.value.CompareTo(other);
+        return value.CompareTo(other);
     }
 
     /// <summary>
@@ -528,7 +528,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
                 return 0;
             else
                 return -1;
-        return this.value.CompareTo(other.value);
+        return value.CompareTo(other.value);
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
@@ -539,7 +539,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
                 return 0;
             else
                 return -1;
-        return this.value.CompareTo(obj);
+        return value.CompareTo(obj);
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
@@ -561,7 +561,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
-    public static implicit operator CompanyId? (string x)
+    public static implicit operator CompanyId?(string x)
     {
         return x == null ? (CompanyId?)null : new CompanyId(x);
     }
@@ -574,7 +574,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
             return Convert.GetTypeCode(null);
         }
 
-        return this.value.GetTypeCode();
+        return value.GetTypeCode();
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
@@ -739,7 +739,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
             return Convert.ToString(null);
         }
 
-        return this.value.ToString(provider);
+        return value.ToString(provider);
     }
 
     [GeneratedCode("BlackFox.Stidgen", "1.1.0")]

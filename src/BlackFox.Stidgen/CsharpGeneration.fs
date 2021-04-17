@@ -43,13 +43,13 @@ module private SerializationAttributes =
     module private ProtobufNet =
         let ifEnabled info arg f = if info.Id.ProtobufnetSerializable then f arg else arg
 
-        let addProtoMember info field =
+        let addProtoMember info (field: FieldDeclarationSyntax) =
             ifEnabled info field
-                <| addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1])
+                <| (fun x -> x.addAttribute (makeAttribute (identifier "ProtoMember") [Literal.Int 1]))
 
         let addProtoContract info (generatedType:StructDeclarationSyntax) =
             ifEnabled info generatedType
-                <| addAttribute (makeAttribute (identifier "ProtoContract") [])
+                <| (fun x -> x.addAttribute (makeAttribute (identifier "ProtoContract") []))
 
         let addUsing infos file =
             let enabledForOne = infos |> Seq.exists (fun i -> i.Id.ProtobufnetSerializable)
@@ -61,15 +61,15 @@ module private SerializationAttributes =
     module private DataContract =
         let ifEnabled info arg f = if info.Id.DataContractSerializable then f arg else arg
 
-        let addDataMember info field =
+        let addDataMember info (field: FieldDeclarationSyntax) =
             ifEnabled info field (fun field ->
                 let orderArgument = attributeArgument "Order" (Literal.Int 1)
                 let attribute = makeAttribute' (identifier "DataMember") [orderArgument]
-                addAttribute attribute field)
+                field.addAttribute attribute)
 
         let addDataContract info (generatedType:StructDeclarationSyntax) =
             ifEnabled info generatedType
-                <| addAttribute (makeAttribute (identifier "DataContract") [])
+                <| (fun x -> x.addAttribute (makeAttribute (identifier "DataContract") []))
 
         let addUsing infos file =
             let enabledForOne = infos |> Seq.exists (fun i -> i.Id.DataContractSerializable)
@@ -80,32 +80,31 @@ module private SerializationAttributes =
 
     let addUsing infos file =
         file
-        |> ProtobufNet.addUsing infos 
+        |> ProtobufNet.addUsing infos
         |> DataContract.addUsing infos
 
     let addToGeneratedType info (generatedType:StructDeclarationSyntax) =
         generatedType
-        |> ProtobufNet.addProtoContract info 
+        |> ProtobufNet.addProtoContract info
         |> DataContract.addDataContract info
 
     let addToField info field =
         field
-        |> ProtobufNet.addProtoMember info 
+        |> ProtobufNet.addProtoMember info
         |> DataContract.addDataMember info
 
 let private makeValueField info =
     // Not marked as readonly for the potential perf gain
     // See https://codeblog.jonskeet.uk/2014/07/16/micro-optimization-the-surprising-inefficiency-of-readonly-fields/
-    field info.UnderlyingTypeSyntax info.FieldName
-        |> addModifiers [| SyntaxKind.PrivateKeyword |]
-        |> SerializationAttributes.addToField info
+    let f = (field info.UnderlyingTypeSyntax info.FieldName) .addModifiers([| SyntaxKind.PrivateKeyword |])
+    SerializationAttributes.addToField info f
 
 let private makeValueProperty info =
     let body = block [| ret info.ThisValueMemberAccess |]
     SyntaxFactory.PropertyDeclaration(info.UnderlyingTypeSyntax, info.PropertyName)
-        |> addModifiers [| SyntaxKind.PublicKeyword |]
+        .addModifiers [| SyntaxKind.PublicKeyword |]
         |> addGetter body
-        
+
 /// Is interning enabled (Config + underlying = string)
 let inline private internEnabled info =
     info.Id.InternString && (typeof<string> = info.Id.UnderlyingType)
@@ -125,9 +124,9 @@ let private internIfNeeded arg info =
 
 let private makeCheckValuePartial info =
     SyntaxFactory.MethodDeclaration(TypeSyntax.Void, info.CheckMethodName)
-    |> addModifiers [|SyntaxKind.PartialKeyword|]
-    |> addParameter info.FieldName info.UnderlyingTypeSyntax
-    |> withSemicolon
+        |> (fun x -> x.addModifiers [|SyntaxKind.PartialKeyword|])
+        |> (fun x -> x.addParameter info.FieldName info.UnderlyingTypeSyntax)
+        |> (fun x -> x.withSemicolon)
 
 let private makeCtor info =
     let argName = info.FieldName
@@ -136,11 +135,11 @@ let private makeCtor info =
     let assignProperty = setThisMember info.FieldName (internIfNeeded arg info)
 
     SyntaxFactory.ConstructorDeclaration(info.Id.Name)
-    |> addModifiers [|SyntaxKind.PublicKeyword|]
-    |> addParameter argName info.UnderlyingTypeSyntax
-    |?> (not info.AllowNull && info.CanBeNull, addBodyStatement checkForNull)
-    |> addBodyStatement assignProperty
-    |> addBodyStatement (invocationStatement (thisMemberAccess info.CheckMethodName) [info.ThisValueMemberAccess])
+        .addModifiers([|SyntaxKind.PublicKeyword|])
+        .addParameter(argName, info.UnderlyingTypeSyntax)
+        |?> (not info.AllowNull && info.CanBeNull, (fun x -> x.addBodyStatement checkForNull))
+        |> (fun x -> x.addBodyStatement assignProperty)
+        |> (fun x -> x.addBodyStatement (invocationStatement (thisMemberAccess info.CheckMethodName) [info.ThisValueMemberAccess]))
 
 let private returnCallVoidMethodOnValue name info =
     ret
@@ -166,9 +165,9 @@ let private makeToString info =
         )
 
     SyntaxFactory.MethodDeclaration(TypeSyntax.String, "ToString")
-    |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-    |?> ((info.CanBeNull && not isString), addBodyStatement returnIfNull)
-    |> addBodyStatement returnToString
+        .addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
+        |?> ((info.CanBeNull && not isString), (fun x -> x.addBodyStatement returnIfNull))
+        |> (fun x -> x.addBodyStatement returnToString)
 
 module private Equality =
     open System.Reflection
@@ -205,10 +204,10 @@ module private Equality =
             )
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Int, "GetHashCode")
-        |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-        |?> (info.CanBeNull && not (internEnabled info), addBodyStatement returnIfNull)
-        |> addBodyStatement returnGetHashCode
-        |> addTriviaBefore [getHashCodeDoc]
+            .addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
+            |?> (info.CanBeNull && not (internEnabled info), (fun x -> x.addBodyStatement returnIfNull))
+            |> (fun x -> x.addBodyStatement returnGetHashCode)
+            |> (fun x -> x.addTriviaBefore [getHashCodeDoc])
 
     /// All of the following types have '!=' and '==' implemented with another instance of the same type
     /// but there is no op_Equality or op_Inequality method present as they exists directly at the IL level.
@@ -230,9 +229,12 @@ module private Equality =
                 Literal.String "Value should always be interned if interning is enabled"
             |]
             |> statement
-    
+
     let inline private assertValueIsInternedIfNeeded info expr method =
-        (|?>) method (internEnabled info, addBodyStatement (assertValueIsInterned info expr))
+        (|?>) method (internEnabled info, (fun (x: MethodDeclarationSyntax) -> x.addBodyStatement (assertValueIsInterned info expr)))
+
+    let inline private assertValueIsInternedIfNeededOp info expr method =
+        (|?>) method (internEnabled info, (fun (x: OperatorDeclarationSyntax) -> x.addBodyStatement (assertValueIsInterned info expr)))
 
     /// Call the most adapted underlying equals method between underlying-typed expressions.
     let private underlyingEquals info exprA exprB eq enableInterning =
@@ -254,7 +256,7 @@ module private Equality =
                     CallingConventions.Any,
                     [|info.Id.UnderlyingType;info.Id.UnderlyingType|],
                     null)
-        
+
             if isPredefined || (not (isNull operatorMethod)) then
                 // Prefer the operator as for CLR implementations it's an obvious optimization for native types and strings
                 let op = if eq then equals else notEquals
@@ -279,19 +281,19 @@ module private Equality =
         let body = ret (underlyingEquals info (value parameterA) (value parameterB) true true)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
-        |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword|]
-        |> addParameter "a" info.GeneratedTypeSyntax
-        |> addParameter "b" info.GeneratedTypeSyntax
-        |> assertValueIsInternedIfNeeded info (value parameterA)
-        |> assertValueIsInternedIfNeeded info (value parameterB)
-        |> addBodyStatement body
+            |> (fun x -> x.addModifiers([|SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword|]))
+            |> (fun x -> x.addParameter "a" info.GeneratedTypeSyntax)
+            |> (fun x -> x.addParameter "b" info.GeneratedTypeSyntax)
+            |> assertValueIsInternedIfNeeded info (value parameterA)
+            |> assertValueIsInternedIfNeeded info (value parameterB)
+            |> (fun x -> x.addBodyStatement body)
 
     let private makeEquals info =
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
 
         let notIs typeSyntax = not' (is typeSyntax parameter)
-        let incorrectTypeCondition = 
+        let incorrectTypeCondition =
             if info.Id.EqualsUnderlying then
                 and' (notIs info.GeneratedTypeSyntax) (notIs info.UnderlyingTypeSyntax) :> ExpressionSyntax
             else
@@ -317,13 +319,13 @@ module private Equality =
                 )
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
-        |> addModifiers [|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]
-        |> addParameter parameterName TypeSyntax.Object
-        |> assertValueIsInternedIfNeeded info info.ThisValueMemberAccess
-        |> addBodyStatement returnFalseForIncorrectType
-        |?> (info.Id.EqualsUnderlying, addBodyStatement ifIsUnderlyingReturnEquals)
-        |> addBodyStatement returnArgCastToIdValueEqualsValue
-        |> addTriviaBefore [objectEqualsDoc]
+            |> (fun x -> x.addModifiers([|SyntaxKind.PublicKeyword; SyntaxKind.OverrideKeyword|]))
+            |> (fun x -> x.addParameter parameterName TypeSyntax.Object)
+            |> assertValueIsInternedIfNeeded info info.ThisValueMemberAccess
+            |> (fun x -> x.addBodyStatement returnFalseForIncorrectType)
+            |?> (info.Id.EqualsUnderlying, (fun x -> x.addBodyStatement ifIsUnderlyingReturnEquals))
+            |> (fun x -> x.addBodyStatement returnArgCastToIdValueEqualsValue)
+            |> (fun x -> x.addTriviaBefore [objectEqualsDoc])
 
     let private makeEqualsGenerated info =
         let parameterName = "other"
@@ -331,21 +333,21 @@ module private Equality =
         let body = ret (thisValueEquals info (info.ValueAccess parameter) true true)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
-        |> addModifiers [|SyntaxKind.PublicKeyword|]
-        |> addParameter parameterName info.GeneratedTypeSyntax
-        |> assertValueIsInternedIfNeeded info info.ThisValueMemberAccess
-        |> assertValueIsInternedIfNeeded info (info.ValueAccess parameter)
-        |> addBodyStatement body
-        
+            |> (fun x -> x.addModifiers [|SyntaxKind.PublicKeyword|])
+            |> (fun x -> x.addParameter parameterName info.GeneratedTypeSyntax)
+            |> assertValueIsInternedIfNeeded info info.ThisValueMemberAccess
+            |> assertValueIsInternedIfNeeded info (info.ValueAccess parameter)
+            |> (fun x -> x.addBodyStatement body)
+
     let private makeEqualsUnderlying info =
         let parameterName = "other"
         let parameter = identifier parameterName :> ExpressionSyntax
         let body = ret (thisValueEquals info parameter true false)
 
         SyntaxFactory.MethodDeclaration(TypeSyntax.Bool, "Equals")
-        |> addModifiers [|SyntaxKind.PublicKeyword|]
-        |> addParameter parameterName info.UnderlyingTypeSyntax
-        |> addBodyStatement body
+            |> (fun x -> x.addModifiers [|SyntaxKind.PublicKeyword|])
+            |> (fun x -> x.addParameter parameterName info.UnderlyingTypeSyntax)
+            |> (fun x -> x.addBodyStatement body)
 
     let private iEquatable = typedefof<IEquatable<_>>
     let private iEquatableNamespace = NameSyntax.MakeQualified(iEquatable.Namespace.Split('.'))
@@ -362,59 +364,59 @@ module private Equality =
 
         let operatorToken = if eq then SyntaxKind.EqualsEqualsToken else SyntaxKind.ExclamationEqualsToken
         SyntaxFactory.OperatorDeclaration(TypeSyntax.Bool, SyntaxFactory.Token(operatorToken))
-        |> addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|]
-        |> addParameter "left" leftArgType
-        |> addParameter "right" rightArgType
-        |?> (enableInterning, assertValueIsInternedIfNeeded info leftValue)
-        |?> (enableInterning, assertValueIsInternedIfNeeded info rightValue)
-        |> addBodyStatement body
+            |> (fun x -> x.addModifiers [|SyntaxKind.PublicKeyword;SyntaxKind.StaticKeyword|])
+            |> (fun x -> x.addParameter "left" leftArgType)
+            |> (fun x -> x.addParameter "right" rightArgType)
+            |?> (enableInterning, assertValueIsInternedIfNeededOp info leftValue)
+            |?> (enableInterning, assertValueIsInternedIfNeededOp info rightValue)
+            |> (fun x -> x.addBodyStatement body)
 
-    let private addOperators info (classDeclaration:StructDeclarationSyntax) =
+    let private addOperators info (decl:StructDeclarationSyntax) =
         let direct _ expr = expr
         let generated = info.GeneratedTypeSyntax
         let underlying = info.UnderlyingTypeSyntax
 
-        classDeclaration
-        |> addMember (makeOperator info true generated generated value value true)
-        |> addMember (makeOperator info false generated generated value value true)
-        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info true generated underlying value direct false))
-        |?> (info.Id.EqualsUnderlying, addMember (makeOperator info false generated underlying value direct false))
+        decl
+            |> (fun x -> x.addMember (makeOperator info true generated generated value value true))
+            |> (fun x -> x.addMember (makeOperator info false generated generated value value true))
+            |?> (info.Id.EqualsUnderlying, (fun x -> x.addMember (makeOperator info true generated underlying value direct false)))
+            |?> (info.Id.EqualsUnderlying, (fun x -> x.addMember (makeOperator info false generated underlying value direct false)))
 
     let addEqualityMembers info (decl:StructDeclarationSyntax) =
         decl
-        |> addBaseTypes [| iequatableOf info.GeneratedTypeSyntax |]
-        |?> (info.Id.EqualsUnderlying, addBaseTypes [| iequatableOf info.UnderlyingTypeSyntax |])
-        |> addMember (makeGetHashCode info)
-        |> addMember (makeEquals info)
-        |> addMember (makeEqualsGenerated info)
-        |> addMember (makeStaticEquals info)
-        |> addOperators info
-        |?> (info.Id.EqualsUnderlying, addMember (makeEqualsUnderlying info))
+            |> (fun x -> x.addBaseTypes [| iequatableOf info.GeneratedTypeSyntax |])
+            |?> (info.Id.EqualsUnderlying, (fun x -> x.addBaseTypes [| iequatableOf info.UnderlyingTypeSyntax |]))
+            |> (fun x -> x.addMember (makeGetHashCode info))
+            |> (fun x -> x.addMember (makeEquals info))
+            |> (fun x -> x.addMember (makeEqualsGenerated info))
+            |> (fun x -> x.addMember (makeStaticEquals info))
+            |> addOperators info
+            |?> (info.Id.EqualsUnderlying, (fun x -> x.addMember (makeEqualsUnderlying info)))
 
 module private Casts =
-    let addCast fromType toType cast expressionMaker generatedType =
+    let addCast fromType toType cast expressionMaker (generatedType: StructDeclarationSyntax) =
         let parameterName = "x"
-        let makeCast cast' = 
+        let makeCast cast' =
             SyntaxFactory.ConversionOperatorDeclaration(SyntaxFactory.Token(cast'), toType)
-                |> addModifiers [ SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword ]
-                |> addParameter parameterName fromType
-                |> addBodyStatement (ret (expressionMaker parameterName)) 
+                |> (fun x -> x.addModifiers [ SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword ])
+                |> (fun x -> x.addParameter parameterName fromType)
+                |> (fun x -> x.addBodyStatement (ret (expressionMaker parameterName)))
 
-        let addCast' cast' = generatedType |> addMember (makeCast cast')
+        let addCast' cast' = generatedType.addMember (makeCast cast')
 
         match cast with
         | None -> generatedType
         | Implicit -> addCast' SyntaxKind.ImplicitKeyword
         | Explicit -> addCast' SyntaxKind.ExplicitKeyword
-        
+
     /// IdType -> UnderlyingType
-    let addToUnderlyingType info generatedType = 
+    let addToUnderlyingType info generatedType =
         generatedType
         |> addCast info.GeneratedTypeSyntax info.UnderlyingTypeSyntax info.Id.CastToUnderlying
             (fun n -> value info (identifier n))
-    
+
     /// UnderlyingType -> IdType
-    let addFromUnderlyingType info generatedType = 
+    let addFromUnderlyingType info generatedType =
         generatedType
         |> addCast
             info.UnderlyingTypeSyntax
@@ -454,7 +456,7 @@ module private Casts =
             maker
 
     /// UnderlyingType? -> IdType?
-    let addFromUnderlyingTypeNullable info generatedType = 
+    let addFromUnderlyingTypeNullable info generatedType =
         let toType = nullable info.GeneratedTypeSyntax
         let maker (argName:string) =
             let argId = identifier argName
@@ -496,8 +498,8 @@ module private InterfaceLift =
     type InterfaceLiftParams =
         {
             Explicit: bool
-        } 
-    
+        }
+
     type InterfaceLift =
         {
             LiftedType : Type
@@ -521,19 +523,19 @@ module private InterfaceLift =
         // Initial declaration
         let returnType = NameSyntax.FromType m.ReturnType
         let declaration = SyntaxFactory.MethodDeclaration(returnType, m.Name)
-        let declaration = 
+        let declaration =
             if lift.Params.Explicit then
                 declaration.WithExplicitInterfaceSpecifier(SyntaxFactory.ExplicitInterfaceSpecifier(name lift))
             else
-                declaration |> addModifiers [SyntaxKind.PublicKeyword]
+                declaration.addModifiers [SyntaxKind.PublicKeyword]
 
         // Add parameters
         let parameters = m.GetParameters() |> Array.map (fun p -> (p.Name, NameSyntax.FromType p.ParameterType))
-        let declaration = parameters |> Seq.fold (fun decl (name, type') -> decl |> addParameter name type') declaration
+        let declaration = parameters |> Seq.fold (fun (decl: MethodDeclarationSyntax) (name, type') -> decl.addParameter name type') declaration
 
         // Body
         let parametersForCall = parameters |> Array.map (fun (name, _) -> identifier name :> ExpressionSyntax)
-        let bodyRet = 
+        let bodyRet =
             ret
                 (invocation
                     (lift.Info.ThisValueMemberAccess |> cast (name lift) |> memberAccess m.Name)
@@ -541,12 +543,12 @@ module private InterfaceLift =
 
         // Add body
         declaration
-            |?> (lift.Info.CanBeNull, addBodyStatement (lift.GetNullCheck m lift.Info))
-            |> addBodyStatement bodyRet
+            |?> (lift.Info.CanBeNull, (fun x -> x.addBodyStatement (lift.GetNullCheck m lift.Info)))
+            |> (fun x -> x.addBodyStatement bodyRet)
 
     let addAllMethods lift (classDeclaration : StructDeclarationSyntax) =
         (type' lift).GetMethods()
-            |> Array.fold (fun decl m -> decl |> addMember (makeMember m lift)) classDeclaration
+            |> Array.fold (fun (decl: StructDeclarationSyntax) m -> decl.addMember (makeMember m lift)) classDeclaration
 
     let isPossible lift = (type' lift).IsAssignableFrom(lift.Info.Id.UnderlyingType)
 
@@ -554,7 +556,7 @@ module private InterfaceLift =
         if isPossible lift then
             decl
             |> addAllMethods lift
-            |> addBaseTypes [| (name lift) |]
+            |> (fun x -> x.addBaseTypes [| (name lift) |])
         else
             decl
 
@@ -562,10 +564,10 @@ module private InterfaceLift =
 module private Convertible =
     open System.Reflection
     open InterfaceLift
-    
+
     let private makeNullCheck (m : MethodInfo) info =
         match m.Name with
-        | "ToType" -> 
+        | "ToType" ->
             // ToType equivalent on System.Convert is named ChangeType
             let typeVariable = (identifier (m.GetParameters().[0].Name))
             if'
@@ -575,7 +577,7 @@ module private Convertible =
                         ret (invocation (dottedMemberAccess' ["System"; "Convert"; "ChangeType"]) [|Literal.Null; typeVariable|])
                     |])
             :> StatementSyntax
-        | "ToChar" -> 
+        | "ToChar" ->
             // To char always throw for null, so no need to call the static version
             let argName = m.GetParameters().[0].Name
             throwIfArgumentNull argName
@@ -695,7 +697,7 @@ module private GenericComparable =
         info.Id.UnderlyingType.GetInterfaces() |> Array.exists (fun interf -> interf = selfEquatableType)
 
     /// Implement IComparable<Id>
-    let private addSelfComparable (info: ParsedInfo) decl =
+    let private addSelfComparable (info: ParsedInfo) (decl: StructDeclarationSyntax) =
         let comparableUnderlying = iComparable.MakeGenericType(info.Id.UnderlyingType)
         let otherField = identifier "other" |> memberAccess info.FieldName
         let nullCheck =
@@ -707,7 +709,7 @@ module private GenericComparable =
                     (ret (Literal.Int -1))
                 )
             :> StatementSyntax
-        let bodyRet = 
+        let bodyRet =
             ret
                 (invocation
                     (info.ThisValueMemberAccess |> cast (NameSyntax.FromType comparableUnderlying) |> memberAccess "CompareTo")
@@ -715,15 +717,15 @@ module private GenericComparable =
 
         let compareToMethod =
             SyntaxFactory.MethodDeclaration(namesyntaxof<int>, "CompareTo")
-            |> addModifiers [SyntaxKind.PublicKeyword]
-            |> addParameter "other" info.GeneratedTypeSyntax
-            |?> (info.CanBeNull, addBodyStatement nullCheck)
-            |> addBodyStatement bodyRet
+            |> (fun x -> x.addModifiers [SyntaxKind.PublicKeyword])
+            |> (fun x -> x.addParameter "other" info.GeneratedTypeSyntax)
+            |?> (info.CanBeNull, (fun x -> x.addBodyStatement nullCheck))
+            |> (fun x -> x.addBodyStatement bodyRet)
             |> addTriviaBefore [docComment]
 
         decl
-            |> addMember compareToMethod
-            |> addBaseTypes [ iComparableOf info.GeneratedTypeSyntax ]
+            |> (fun x -> x.addMember compareToMethod)
+            |> (fun x -> x.addBaseTypes [ iComparableOf info.GeneratedTypeSyntax ])
 
     let addComparable info decl =
         decl
@@ -741,7 +743,7 @@ module private Formattable =
         :> StatementSyntax
 
     let addToStringWithFormat lift (decl : StructDeclarationSyntax) =
-        let body =     
+        let body =
             ret (
                 invocation
                     (lift.Info.ThisValueMemberAccess |> memberAccess "ToString")
@@ -753,12 +755,12 @@ module private Formattable =
 
         let method' =
             SyntaxFactory.MethodDeclaration(NameSyntax.String, "ToString")
-            |> addModifiers [SyntaxKind.PublicKeyword]
-            |> addParameter "format" NameSyntax.String
-            |?> (lift.Info.CanBeNull, addBodyStatement (makeNullCheck () lift.Info))
-            |> addBodyStatement body
+            |> (fun x -> x.addModifiers [SyntaxKind.PublicKeyword])
+            |> (fun x -> x.addParameter "format" NameSyntax.String)
+            |?> (lift.Info.CanBeNull, (fun x -> x.addBodyStatement (makeNullCheck () lift.Info)))
+            |> (fun x -> x.addBodyStatement body)
 
-        decl |> addMember method'
+        decl.addMember method'
 
     let addFormattable info decl =
         let lift = makeLift<IFormattable> makeNullCheck { Explicit=false } info
@@ -779,7 +781,7 @@ module private ParseMethods =
             && parameters.Length >= 1
             && parameters.[0].ParameterType = typeof<string>
             && m.ReturnType = result
-        
+
     let makeIdType x info = objectCreation info.GeneratedTypeSyntax [x]
 
     let private makeParseMethod (info:ParsedInfo) (parseMethod:MethodInfo) =
@@ -787,11 +789,11 @@ module private ParseMethods =
         let body = ret (makeIdType parse info)
 
         SyntaxFactory.MethodDeclaration(info.GeneratedTypeSyntax, "Parse")
-        |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
-        |> addParameters' (getParametersForDeclaration parseMethod)
-        |> withBody [body]
+        |> (fun x -> x.addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword])
+        |> (fun x -> x.addParameters' (getParametersForDeclaration parseMethod))
+        |> (fun x -> x.withBody [body])
 
-    let private isTryParseMethod (result:Type) (m:MethodInfo) = 
+    let private isTryParseMethod (result:Type) (m:MethodInfo) =
         let parameters = m.GetParameters()
         let lastParamId = parameters.Length - 1
         m.Name = "TryParse"
@@ -811,9 +813,9 @@ module private ParseMethods =
 
     let private makeNullableTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
         let resultType = nullable info.GeneratedTypeSyntax
-        let body : StatementSyntax list = 
+        let body : StatementSyntax list =
             [
-                variable info.UnderlyingTypeSyntax "parsed" 
+                variable info.UnderlyingTypeSyntax "parsed"
                 initializedVariable TypeSyntax.Bool "isValid" (callTryParse tryParseMethod "parsed");
                 ret (
                     cond
@@ -827,13 +829,13 @@ module private ParseMethods =
         let parameters = getParametersForDeclaration tryParseMethod |> Seq.take(parameterCount)
 
         SyntaxFactory.MethodDeclaration(resultType, "TryParse")
-        |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
-        |> addParameters' parameters
-        |> withBody body
+        |> (fun x -> x.addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword])
+        |> (fun x -> x.addParameters' parameters)
+        |> (fun x -> x.withBody body)
 
     let private makeStandardTryParseMethod (info:ParsedInfo) (tryParseMethod:MethodInfo) =
         let resultArgName = (tryParseMethod.GetParameters() |> Seq.last).Name
-        let body : StatementSyntax list = 
+        let body : StatementSyntax list =
             [
                 variable info.UnderlyingTypeSyntax "parsed"
                 initializedVariable TypeSyntax.Bool "isValid" (callTryParse tryParseMethod "parsed")
@@ -851,16 +853,16 @@ module private ParseMethods =
         let parameters = (outArg :: parameters.Tail) |> List.rev
 
         SyntaxFactory.MethodDeclaration(typesyntaxof<bool>, "TryParse")
-        |> addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword]
-        |> addParameters' parameters
-        |> withBody body
+        |> (fun x -> x.addModifiers [SyntaxKind.PublicKeyword; SyntaxKind.StaticKeyword])
+        |> (fun x -> x.addParameters' parameters)
+        |> (fun x -> x.withBody body)
 
     let private getSomeMethods filter (info:ParsedInfo) =
         info.Id.UnderlyingType.GetMethods() |> Seq.filter (filter info.Id.UnderlyingType)
 
     let addParseMethods info (decl : StructDeclarationSyntax) =
-        let make filter makeMethod = getSomeMethods filter info |> Seq.map(makeMethod info) 
-        let members = 
+        let make filter makeMethod = getSomeMethods filter info |> Seq.map(makeMethod info)
+        let members =
              [
                 make isParseMethod makeParseMethod
                 make isTryParseMethod makeStandardTryParseMethod
@@ -869,7 +871,7 @@ module private ParseMethods =
 
         let members = members |> Seq.collect id |> Seq.map (fun m -> m :> MemberDeclarationSyntax)
 
-        decl |> addMembers members
+        decl.addMembers members
 
 module private DebuggerDisplayAttribute =
     let private nameSyntax = identifier "DebuggerDisplay"
@@ -880,10 +882,10 @@ module private DebuggerDisplayAttribute =
 
     let add info (decl : StructDeclarationSyntax) =
         let attr = mkAttribute info
-        decl |> addAttribute attr
+        decl.addAttribute attr
 
 /// Add the [GeneratedCodeAttribute] for each generated member
-module GeneratedCodeAttribute = 
+module GeneratedCodeAttribute =
     // We can't provide the full name and rely on the simplifier as it doesn't handle this case (As of roslyn 1.0.0-rc2)
     let private nameSyntax = identifier "GeneratedCode"
 
@@ -891,10 +893,12 @@ module GeneratedCodeAttribute =
     let private toolVersion = Literal.String AssemblyVersionInformation.AssemblyVersion
     let private attribute = makeAttribute nameSyntax [toolName; toolVersion]
 
-    let inline private addToMember (typeMember: #SyntaxNode) =
+    let inline private addToMember (typeMember: #MemberDeclarationSyntax) =
         let leadingTrivia = typeMember.GetLeadingTrivia()
         typeMember.WithoutLeadingTrivia()
-        |> addAttribute attribute
+        |> (fun x ->
+            let attributeList = SyntaxFactory.AttributeList([attribute] |> toSeparatedList)
+            x.AddAttributeLists([|attributeList|]))
         |> addTriviaBefore leadingTrivia
 
     let private isPartial (method' : MethodDeclarationSyntax) =
@@ -902,14 +906,13 @@ module GeneratedCodeAttribute =
 
     let private addToMember' (m : MemberDeclarationSyntax) =
         match m with
-        | :? PropertyDeclarationSyntax as property -> property |> addToMember :> MemberDeclarationSyntax
-        | :? FieldDeclarationSyntax as field -> field |> addToMember :> MemberDeclarationSyntax
+        | :? PropertyDeclarationSyntax as property -> property |> addToMember
+        | :? FieldDeclarationSyntax as field -> field |> addToMember
         | :? MethodDeclarationSyntax as method' ->
-            let method' = if isPartial method' then method' else method' |> addToMember
-            method' :> MemberDeclarationSyntax
-        | :? OperatorDeclarationSyntax as operator -> operator |> addToMember :> MemberDeclarationSyntax
-        | :? ConversionOperatorDeclarationSyntax as cast -> cast |> addToMember :> MemberDeclarationSyntax
-        | :? ConstructorDeclarationSyntax as ctor -> ctor |> addToMember :> MemberDeclarationSyntax
+            if isPartial method' then method':> MemberDeclarationSyntax else method' |> addToMember
+        | :? OperatorDeclarationSyntax as operator -> operator |> addToMember
+        | :? ConversionOperatorDeclarationSyntax as cast -> cast |> addToMember
+        | :? ConstructorDeclarationSyntax as ctor -> ctor |> addToMember
         | _ -> m
 
     /// Add the 'GeneratedCodeAttribute' to all members of the type
@@ -917,15 +920,15 @@ module GeneratedCodeAttribute =
         let members = typeSyntax.Members |> Seq.map addToMember'
         typeSyntax.WithMembers( members |> toSyntaxList )
 
-let private makeClass info = 
+let private makeClass info =
     let visibility = visibilityToKeyword info.Id.Visibility
 
     let addMember' builder (decl : StructDeclarationSyntax) =
-        decl |> addMember (builder info)
+        decl.addMember (builder info)
 
     (struct' info.Id.Name)
         |> SerializationAttributes.addToGeneratedType info
-        |> addModifiers [|visibility; SyntaxKind.PartialKeyword|]
+        |> (fun x -> x.addModifiers [|visibility; SyntaxKind.PartialKeyword|])
         |> addMember' makeValueField
         |> addMember' makeValueProperty
         |> addMember' makeCtor
@@ -977,8 +980,8 @@ let private addNamespaceTypes (ns, nsTypes) =
     else
         let nsNode =
             SyntaxFactory.NamespaceDeclaration(SyntaxFactory.IdentifierName(ns))
-            |> addMembers classNodes
-            :> MemberDeclarationSyntax
+                .AddMembers(classNodes |> Seq.toArray)
+                :> MemberDeclarationSyntax
 
         [nsNode] :> MemberDeclarationSyntax seq
 
@@ -1000,7 +1003,7 @@ let makeRootNode (idTypes : IdType seq) =
             "System.Runtime.CompilerServices" (* RuntimeHelpers *)
         ]
         |> SerializationAttributes.addUsing infos
-        |> addMembers fileLevelNodes
+        |> (fun x -> x.AddMembers(fileLevelNodes |> Seq.toArray))
         |> addTriviaBefore (makeSingleLineComments topOfFileComments)
 
 module DocumentGeneration =
@@ -1028,13 +1031,13 @@ module DocumentGeneration =
             |> List.map (fun a -> a.Location)
             |> List.distinct
             |> List.map (fun f -> PortableExecutableReference.CreateFromFile(f))
-            |> List.fold (fun (p:Project) ref -> p.AddMetadataReference(ref)) project 
+            |> List.fold (fun (p:Project) ref -> p.AddMetadataReference(ref)) project
 
         workspace.TryApplyChanges(project.Solution) |> ignore
 
         project.AddDocument("GeneratedId.cs", rootNode)
 
-    let private simplifyDocumentAsync (doc:Document) = 
+    let private simplifyDocumentAsync (doc:Document) =
         async {
             let! root = !! doc.GetSyntaxRootAsync()
             let newRoot = root.WithAdditionalAnnotations(Simplifier.Annotation)

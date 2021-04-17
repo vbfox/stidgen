@@ -1,5 +1,10 @@
 ### New in 1.1.0
 
+* Build with net5.0
+* Update roslyn to a more recent version
+
+### New in 1.1.0
+
 * Make it a dotnet core tool
 * Optimize interned strings equality and `GetHashCode`.
 
