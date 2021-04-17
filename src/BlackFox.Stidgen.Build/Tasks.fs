@@ -82,7 +82,7 @@ let createAndGetDefault () =
     }
 
     let runTests = BuildTask.create "Test" [build] {
-        let testsBinaryDir = artifactsDir </> testProjectName </> (string configuration) </> "netcoreapp2.1"
+        let testsBinaryDir = artifactsDir </> testProjectName </> (string configuration) </> "net5.0"
         [ testsBinaryDir </> (testProjectName + ".dll") ]
             |> Expecto.run (fun p ->
                 { p with

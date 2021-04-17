@@ -210,3 +210,4 @@ FakesAssemblies/
 FSharp.Core.optdata
 FSharp.Core.sigdata
 .idea/
+.ionide/
