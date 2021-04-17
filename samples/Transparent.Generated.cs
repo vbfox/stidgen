@@ -11,10 +11,10 @@ using System.Runtime.CompilerServices;
 [DebuggerDisplay("{value,nq}")]
 public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparable<string>, IComparable<UserId>, IComparable, IConvertible
 {
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     private string value;
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public string Value
     {
         get
@@ -23,7 +23,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         }
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public UserId(string value)
     {
         this.value = value == null ? null : string.Intern(value);
@@ -32,7 +32,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
 
     partial void CheckValue(string value);
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public override string ToString()
     {
         return value;
@@ -40,7 +40,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
 
     /// <summary>Serves as the default hash function.</summary>
     /// <returns>A hash code for the current object.</returns>
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public override int GetHashCode()
     {
         return RuntimeHelpers.GetHashCode(value);
@@ -54,7 +54,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
     /// true if the specified object is equal to the current object;
     /// otherwise, false.
     /// </returns>
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public override bool Equals(object other)
     {
         Debug.Assert(value == null || string.IsInterned(value) == null, "Value should always be interned if interning is enabled");
@@ -71,7 +71,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return object.ReferenceEquals(value, ((UserId)other).value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public bool Equals(UserId other)
     {
         Debug.Assert(value == null || string.IsInterned(value) == null, "Value should always be interned if interning is enabled");
@@ -79,7 +79,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return object.ReferenceEquals(value, other.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool Equals(UserId a, UserId b)
     {
         Debug.Assert(a.value == null || string.IsInterned(a.value) == null, "Value should always be interned if interning is enabled");
@@ -87,7 +87,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return object.ReferenceEquals(a.value, b.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator ==(UserId left, UserId right)
     {
         Debug.Assert(left.value == null || string.IsInterned(left.value) == null, "Value should always be interned if interning is enabled");
@@ -95,7 +95,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return object.ReferenceEquals(left.value, right.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator !=(UserId left, UserId right)
     {
         Debug.Assert(left.value == null || string.IsInterned(left.value) == null, "Value should always be interned if interning is enabled");
@@ -103,25 +103,25 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return !object.ReferenceEquals(left.value, right.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator ==(UserId left, string right)
     {
         return left.value == right;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator !=(UserId left, string right)
     {
         return left.value != right;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public bool Equals(string other)
     {
         return value == other;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public int CompareTo(string other)
     {
         if (value == null)
@@ -147,7 +147,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
     /// <paramref name="other" />. Greater than zero This instance follows
     /// <paramref name="other" /> in the sort order.
     /// </returns>
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public int CompareTo(UserId other)
     {
         if (value == null)
@@ -158,7 +158,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return value.CompareTo(other.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     int IComparable.CompareTo(object obj)
     {
         if (value == null)
@@ -169,31 +169,31 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return value.CompareTo(obj);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator string(UserId x)
     {
         return x.value;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator UserId(string x)
     {
         return new UserId(x);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator string(UserId? x)
     {
         return !x.HasValue || x.Value.value == null ? null : x.Value.value;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator UserId?(string x)
     {
         return x == null ? (UserId?)null : new UserId(x);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     TypeCode IConvertible.GetTypeCode()
     {
         if (value == null)
@@ -204,7 +204,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return value.GetTypeCode();
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     bool IConvertible.ToBoolean(IFormatProvider provider)
     {
         if (value == null)
@@ -215,7 +215,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToBoolean(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     char IConvertible.ToChar(IFormatProvider provider)
     {
         if (provider == null)
@@ -226,7 +226,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToChar(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     sbyte IConvertible.ToSByte(IFormatProvider provider)
     {
         if (value == null)
@@ -237,7 +237,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToSByte(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     byte IConvertible.ToByte(IFormatProvider provider)
     {
         if (value == null)
@@ -248,7 +248,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToByte(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     short IConvertible.ToInt16(IFormatProvider provider)
     {
         if (value == null)
@@ -259,7 +259,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToInt16(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     ushort IConvertible.ToUInt16(IFormatProvider provider)
     {
         if (value == null)
@@ -270,7 +270,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToUInt16(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     int IConvertible.ToInt32(IFormatProvider provider)
     {
         if (value == null)
@@ -281,7 +281,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToInt32(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     uint IConvertible.ToUInt32(IFormatProvider provider)
     {
         if (value == null)
@@ -292,7 +292,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToUInt32(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     long IConvertible.ToInt64(IFormatProvider provider)
     {
         if (value == null)
@@ -303,7 +303,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToInt64(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     ulong IConvertible.ToUInt64(IFormatProvider provider)
     {
         if (value == null)
@@ -314,7 +314,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToUInt64(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     float IConvertible.ToSingle(IFormatProvider provider)
     {
         if (value == null)
@@ -325,7 +325,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToSingle(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     double IConvertible.ToDouble(IFormatProvider provider)
     {
         if (value == null)
@@ -336,7 +336,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToDouble(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     decimal IConvertible.ToDecimal(IFormatProvider provider)
     {
         if (value == null)
@@ -347,7 +347,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToDecimal(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     DateTime IConvertible.ToDateTime(IFormatProvider provider)
     {
         if (value == null)
@@ -358,7 +358,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return ((IConvertible)value).ToDateTime(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     string IConvertible.ToString(IFormatProvider provider)
     {
         if (value == null)
@@ -369,7 +369,7 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
         return value.ToString(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     object IConvertible.ToType(Type conversionType, IFormatProvider provider)
     {
         if (value == null)
@@ -384,10 +384,10 @@ public partial struct UserId : IEquatable<UserId>, IEquatable<string>, IComparab
 [DebuggerDisplay("{value,nq}")]
 public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, IComparable<string>, IComparable<CompanyId>, IComparable, IConvertible
 {
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     private string value;
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public string Value
     {
         get
@@ -396,7 +396,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         }
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public CompanyId(string value)
     {
         this.value = value == null ? null : string.Intern(value);
@@ -405,7 +405,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
 
     partial void CheckValue(string value);
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public override string ToString()
     {
         return value;
@@ -413,7 +413,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
 
     /// <summary>Serves as the default hash function.</summary>
     /// <returns>A hash code for the current object.</returns>
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public override int GetHashCode()
     {
         return RuntimeHelpers.GetHashCode(value);
@@ -427,7 +427,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
     /// true if the specified object is equal to the current object;
     /// otherwise, false.
     /// </returns>
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public override bool Equals(object other)
     {
         Debug.Assert(value == null || string.IsInterned(value) == null, "Value should always be interned if interning is enabled");
@@ -444,7 +444,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return object.ReferenceEquals(value, ((CompanyId)other).value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public bool Equals(CompanyId other)
     {
         Debug.Assert(value == null || string.IsInterned(value) == null, "Value should always be interned if interning is enabled");
@@ -452,7 +452,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return object.ReferenceEquals(value, other.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool Equals(CompanyId a, CompanyId b)
     {
         Debug.Assert(a.value == null || string.IsInterned(a.value) == null, "Value should always be interned if interning is enabled");
@@ -460,7 +460,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return object.ReferenceEquals(a.value, b.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator ==(CompanyId left, CompanyId right)
     {
         Debug.Assert(left.value == null || string.IsInterned(left.value) == null, "Value should always be interned if interning is enabled");
@@ -468,7 +468,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return object.ReferenceEquals(left.value, right.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator !=(CompanyId left, CompanyId right)
     {
         Debug.Assert(left.value == null || string.IsInterned(left.value) == null, "Value should always be interned if interning is enabled");
@@ -476,25 +476,25 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return !object.ReferenceEquals(left.value, right.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator ==(CompanyId left, string right)
     {
         return left.value == right;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static bool operator !=(CompanyId left, string right)
     {
         return left.value != right;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public bool Equals(string other)
     {
         return value == other;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public int CompareTo(string other)
     {
         if (value == null)
@@ -520,7 +520,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
     /// <paramref name="other" />. Greater than zero This instance follows
     /// <paramref name="other" /> in the sort order.
     /// </returns>
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public int CompareTo(CompanyId other)
     {
         if (value == null)
@@ -531,7 +531,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return value.CompareTo(other.value);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     int IComparable.CompareTo(object obj)
     {
         if (value == null)
@@ -542,31 +542,31 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return value.CompareTo(obj);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator string(CompanyId x)
     {
         return x.value;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator CompanyId(string x)
     {
         return new CompanyId(x);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator string(CompanyId? x)
     {
         return !x.HasValue || x.Value.value == null ? null : x.Value.value;
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     public static implicit operator CompanyId?(string x)
     {
         return x == null ? (CompanyId?)null : new CompanyId(x);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     TypeCode IConvertible.GetTypeCode()
     {
         if (value == null)
@@ -577,7 +577,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return value.GetTypeCode();
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     bool IConvertible.ToBoolean(IFormatProvider provider)
     {
         if (value == null)
@@ -588,7 +588,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToBoolean(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     char IConvertible.ToChar(IFormatProvider provider)
     {
         if (provider == null)
@@ -599,7 +599,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToChar(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     sbyte IConvertible.ToSByte(IFormatProvider provider)
     {
         if (value == null)
@@ -610,7 +610,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToSByte(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     byte IConvertible.ToByte(IFormatProvider provider)
     {
         if (value == null)
@@ -621,7 +621,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToByte(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     short IConvertible.ToInt16(IFormatProvider provider)
     {
         if (value == null)
@@ -632,7 +632,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToInt16(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     ushort IConvertible.ToUInt16(IFormatProvider provider)
     {
         if (value == null)
@@ -643,7 +643,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToUInt16(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     int IConvertible.ToInt32(IFormatProvider provider)
     {
         if (value == null)
@@ -654,7 +654,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToInt32(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     uint IConvertible.ToUInt32(IFormatProvider provider)
     {
         if (value == null)
@@ -665,7 +665,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToUInt32(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     long IConvertible.ToInt64(IFormatProvider provider)
     {
         if (value == null)
@@ -676,7 +676,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToInt64(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     ulong IConvertible.ToUInt64(IFormatProvider provider)
     {
         if (value == null)
@@ -687,7 +687,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToUInt64(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     float IConvertible.ToSingle(IFormatProvider provider)
     {
         if (value == null)
@@ -698,7 +698,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToSingle(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     double IConvertible.ToDouble(IFormatProvider provider)
     {
         if (value == null)
@@ -709,7 +709,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToDouble(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     decimal IConvertible.ToDecimal(IFormatProvider provider)
     {
         if (value == null)
@@ -720,7 +720,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToDecimal(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     DateTime IConvertible.ToDateTime(IFormatProvider provider)
     {
         if (value == null)
@@ -731,7 +731,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return ((IConvertible)value).ToDateTime(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     string IConvertible.ToString(IFormatProvider provider)
     {
         if (value == null)
@@ -742,7 +742,7 @@ public partial struct CompanyId : IEquatable<CompanyId>, IEquatable<string>, ICo
         return value.ToString(provider);
     }
 
-    [GeneratedCode("BlackFox.Stidgen", "1.1.0")]
+    [GeneratedCode("BlackFox.Stidgen", "1.2.1")]
     object IConvertible.ToType(Type conversionType, IFormatProvider provider)
     {
         if (value == null)

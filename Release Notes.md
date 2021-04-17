@@ -1,4 +1,4 @@
-### New in 1.1.0
+### New in 1.2.1
 
 * Build with net5.0
 * Update roslyn to a more recent version

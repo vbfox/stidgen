@@ -23,7 +23,6 @@ let createAndGetDefault () =
     let rootDir = System.IO.Path.GetFullPath(__SOURCE_DIRECTORY__ </> ".." </> "..")
     let srcDir = rootDir </> "src"
     let artifactsDir = rootDir </> "artifacts"
-    let nupkgDir = artifactsDir </> projectName </> (string configuration)
     let projectFile = srcDir </> projectName </> (projectName + ".fsproj")
     let projectBinDir = artifactsDir </> projectName </> (string configuration)
     let solutionFile = srcDir </> "stidgen.sln"
@@ -50,6 +49,8 @@ let createAndGetDefault () =
             fromFile
 
     Trace.setBuildNumber release.NugetVersion
+
+    let nupkgFile = projectBinDir </> (sprintf "stidgen.%s.nupkg" release.NugetVersion)
 
     let writeVersionProps() =
         let doc =
@@ -96,9 +97,6 @@ let createAndGetDefault () =
         DotNet.pack
             (fun p -> { p with Configuration = configuration })
             projectFile
-        let nupkgFile =
-            nupkgDir
-                </> (sprintf "stidgen.%s.nupkg" release.NugetVersion)
 
         Trace.publish ImportData.BuildArtifact nupkgFile
     }
@@ -109,7 +107,9 @@ let createAndGetDefault () =
             | Some(key) -> key
             | None -> UserInput.getUserPassword "NuGet key: "
 
-        Paket.push <| fun p ->  { p with WorkingDir = nupkgDir; ApiKey = key }
+        Paket.pushFiles
+            (fun o -> { o with ApiKey = key; WorkingDir = rootDir })
+            [nupkgFile]
     }
 
     let zipFile = artifactsDir </> (sprintf "%s-%s.zip" projectName release.NugetVersion)
