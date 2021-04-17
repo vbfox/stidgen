@@ -12,11 +12,11 @@ nuget FSharp.Core ~> 5
 // https://github.com/Microsoft/visualfsharp/issues/5531
 nuget Microsoft.CodeAnalysis.CSharp.Workspaces ~> 2.8.2
 nuget FParsec
-nuget BlackFox.ColoredPrintf
+nuget BlackFox.ColoredPrintf ~> 1
 
 // Unit tests
-nuget Expecto
-nuget NFluent ~> 2.3
+nuget Expecto ~> 9
+nuget NFluent ~> 2
 
 // Build infrastructure
 group build
