@@ -6,5 +6,7 @@ open Expecto
 
 [<EntryPoint>]
 let main args =
-    let config = {defaultConfig with parallel = false}
+    let writeResults = TestResults.writeNUnitSummary "TestResults.xml"
+    let config = { defaultConfig with runInParallel = false }
+    let config = config.appendSummaryHandler writeResults
     runTestsInAssembly config args
