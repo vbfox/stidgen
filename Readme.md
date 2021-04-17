@@ -1,9 +1,7 @@
 Strongly Typed ID type Generator
 ================================
 
-[![Join the chat at https://gitter.im/vbfox/stidgen](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/vbfox/stidgen?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/6ehdd4cam628ve57/branch/master?svg=true)](https://ci.appveyor.com/project/vbfox/stidgen/branch/master)
-[![Travis-CI Build status](https://travis-ci.org/vbfox/stidgen.svg?branch=master)](https://travis-ci.org/vbfox/stidgen)
+[![Github Actions Status](https://github.com/vbfox/stidgen/actions/workflows/main.yml/badge.svg)](https://github.com/vbfox/stidgen/actions/workflows/main.yml?query=branch%3Amaster)
 [![Nuget Package](https://img.shields.io/nuget/v/stidgen.svg)](https://www.nuget.org/packages/stidgen)
 
 This tool uses simple text files as input like :
